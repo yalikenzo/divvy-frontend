@@ -78,7 +78,7 @@ http://localhost:3000
 
 | Hero Section | Features | How It Works |
 |---|---|---|
-| ![Hero](./src/img2.png) | ![Features](./src/img3.png) | ![Steps](./src/img5.png) |
+| ![Hero](./divvy/src/img2.png) | ![Features](./divvy/src/img3.png) | ![Steps](./divvy/src/img5.png) |
 
 ---
 
