@@ -1,4 +1,4 @@
-# Divvy 💸
+# Divvy 
 
 > AI-powered bill splitting app that keeps friendships intact.
 
@@ -12,12 +12,12 @@ Splitting bills among friends is awkward, error-prone, and often leads to misund
 
 ## Features
 
-- 📸 **AI Receipt Scanning** — Snap a photo of any receipt and let Computer Vision extract all items, prices, taxes, and tips automatically
-- ⚖️ **Fair Bill Splitting** — Split by individual items, equal shares, or custom amounts
-- 👥 **Group Orders** — Handle complex orders across large friend groups with ease
-- 📊 **Debt Tracking** — Always know who owes what at a glance
-- 📧 **Community Newsletter** — Stay updated with tips and new features
-- 🔐 **User Authentication** — Sign up with email, Google, or Apple
+-  **AI Receipt Scanning** — Snap a photo of any receipt and let Computer Vision extract all items, prices, taxes, and tips automatically
+-  **Fair Bill Splitting** — Split by individual items, equal shares, or custom amounts
+-  **Group Orders** — Handle complex orders across large friend groups with ease
+-  **Debt Tracking** — Always know who owes what at a glance
+-  **Community Newsletter** — Stay updated with tips and new features
+-  **User Authentication** — Sign up with email, Google, or Apple
 
 ---
 
