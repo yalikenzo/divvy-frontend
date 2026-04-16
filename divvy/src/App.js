@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import Mainpage from './Mainpage';
+import Create from './CreatingNewGroup';
 import img2 from './img2.png';
 import img3 from './img3.png';
 import img1 from './img1.jpg';
@@ -6,6 +10,19 @@ import img4 from './img4.jpg';
 import img5 from './img5.jpg';
 import vector1 from './dollar.svg';
 import logo from './divvylogo.svg';
+import { CreateGroup } from './CreatingNewGroup';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Homepage />} />
+        <Route path="/main" element={<Mainpage />} />
+        <Route path="/create" element={<CreateGroup />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 // BUTTON COMPONENT
 const Button = ({ text, fill_background_color, text_color, border_border, border_border_radius, padding, onClick, className = '' }) => {
@@ -26,6 +43,7 @@ const SignUpModal = ({ onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const firstFocusRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     firstFocusRef.current?.focus();
@@ -165,7 +183,10 @@ const SignUpModal = ({ onClose }) => {
           {/* Sign Up button */}
           <button
             className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 rounded-full font-[Outfit] font-semibold text-white text-base transition-colors mb-4"
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              navigate('/create');
+            }}
           >
             Sign Up
           </button>
@@ -497,5 +518,4 @@ const Homepage = () => {
     </main>
   );
 };
-
-export default Homepage;
+export default App;
