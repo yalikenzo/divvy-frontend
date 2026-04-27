@@ -101,7 +101,7 @@ const AvatarFallback = ({ className, children }) => (
 );
 
 // ── Shared Sidebar ────────────────────────────────────────────────────────────
-export const Sidebar = ({ activeNav, onNavChange, groupCount = 0 }) => (
+export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
   <aside className="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 h-full">
     <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
       <span className="font-bold text-[#101828] text-xl tracking-wide">Divvy</span>
@@ -131,11 +131,11 @@ export const Sidebar = ({ activeNav, onNavChange, groupCount = 0 }) => (
     </nav>
     <div className="px-4 py-4 border-t border-gray-100 flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-[linear-gradient(135deg,rgba(79,70,229,1)_0%,rgba(16,185,129,1)_100%)] flex items-center justify-center text-white text-sm font-bold shrink-0">
-        N
+        {user?.initials || "N"}
       </div>
       <div className="flex flex-col min-w-0">
-        <span className="text-sm font-semibold text-[#101828] truncate">Nursanat Mussa</span>
-        <span className="text-xs text-[#99a1af] truncate">hello@divvyapp.com</span>
+        <span className="text-sm font-semibold text-[#101828] truncate">{user?.name}</span>
+        <span className="text-xs text-[#99a1af] truncate">{user?.email}</span>
       </div>
     </div>
   </aside>
@@ -180,9 +180,9 @@ const Toggle = ({ checked, onChange, label, description }) => (
 );
 
 // ── Settings Page ─────────────────────────────────────────────────────────────
-const SettingsPage = () => {
-  const [displayName, setDisplayName] = useState("Nursanat Mussa");
-  const [email, setEmail] = useState("hello@divvyapp.com");
+const SettingsPage = ({ user, onUserChange }) => {
+  const [displayName, setDisplayName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
   const [profileSaved, setProfileSaved] = useState(false);
   const [currency, setCurrency] = useState("USD");
   const [language, setLanguage] = useState("English");
@@ -200,7 +200,12 @@ const SettingsPage = () => {
 
   const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "BRL"];
 
-  function handleSaveProfile() {
+   function handleSaveProfile() {
+    onUserChange({
+      name: displayName,
+      email: email,
+      initials: displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2),
+    });
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2000);
   }
@@ -227,7 +232,7 @@ const SettingsPage = () => {
         <Section title="Profile" description="Update your personal information">
           <div className="flex items-center gap-4 mb-5">
             <Avatar className="w-16 h-16">
-              <AvatarFallback className="bg-indigo-100 text-indigo-700 text-lg font-semibold">NM</AvatarFallback>
+              <AvatarFallback className="bg-indigo-100 text-indigo-700 text-lg font-semibold">{user?.initials || "NM"}</AvatarFallback>
             </Avatar>
             <div>
               <p className="font-semibold text-indigo-950 text-sm">Nursanat Mussa</p>
@@ -442,6 +447,11 @@ export const CreateGroup = () => {
   const [groups, setGroups] = useState([]);
   const [bills, setBills] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null); // ← tracks which group is open
+  const [user, setUser] = useState({
+  name: "Nursanat Mussa",
+  email: "hello@divvyapp.com",
+  initials: "NM",
+  });
 
   const handleCreateGroup = (newGroup) => {
     setGroups((g) => [newGroup, ...g]);
@@ -462,10 +472,10 @@ export const CreateGroup = () => {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
-      <Sidebar activeNav={activePage} onNavChange={setActivePage} groupCount={groups.length} />
+      <Sidebar activeNav={activePage} onNavChange={setActivePage} groupCount={groups.length} user={user} />
 
       <main className="flex-1 overflow-y-auto flex flex-col">
-        {activePage === "settings" && <SettingsPage />}
+        {activePage === "settings" && <SettingsPage user={user} onUserChange={setUser} />}
 
         {activePage !== "settings" && (
           <>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
-import Mainpage from './Mainpage';
 import Create from './CreatingNewGroup';
 import img2 from './img2.png';
 import img3 from './img3.png';
@@ -17,7 +16,6 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Homepage />} />
-        <Route path="/main" element={<Mainpage />} />
         <Route path="/create" element={<CreateGroup />} />
       </Routes>
     </BrowserRouter>
@@ -210,6 +208,16 @@ const SignUpModal = ({ onClose }) => {
 // HEADER COMPONENT
 const Header = ({ onGetStarted }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navItems = [
+    { label: 'Features', id: 'features' },
+    { label: 'How It Works', id: 'how-it-works' },
+    { label: 'Community', id: 'community' },
+  ];
+
+  const scrollTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    setMenuOpen(false);
+  };
 
   return (
     <header className="w-full bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 sm:px-6 lg:px-[106px]">
@@ -223,9 +231,13 @@ const Header = ({ onGetStarted }) => {
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-8">
-            {['Features', 'How It Works', 'Community'].map(item => (
-              <button key={item} className="text-base font-[Outfit] text-gray-500 hover:text-indigo-600 transition-colors duration-200">
-                {item}
+            {navItems.map(item => (
+              <button
+                key={item.label}
+                onClick={() => scrollTo(item.id)}
+                className="text-base font-[Outfit] text-gray-500 hover:text-indigo-600 transition-colors duration-200"
+              >
+                {item.label}
               </button>
             ))}
           </nav>
@@ -275,9 +287,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="flex flex-col gap-3 max-w-[240px]">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-emerald-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">D</span>
-              </div>
+              <img src={logo} alt="Divvy Logo" className="w-[30px] h-[30px] mt-[-59px] mb-[-59px]" /> 
               <span className="text-2xl font-bold font-[Outfit] text-white tracking-wide">Divvy</span>
             </div>
             <p className="text-sm font-[Outfit] text-gray-500 leading-5">AI-powered bill splitting that keeps friendships intact</p>
@@ -407,7 +417,7 @@ const Homepage = () => {
       </section>
 
       {/* Features Section */}
-      <section className="w-full bg-white py-20 px-4 sm:px-6 lg:px-8">
+      <section id="features" className="w-full bg-white py-20 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-[1440px] mx-auto flex flex-col gap-24">
 
           {/* Feature 1 */}
@@ -453,7 +463,7 @@ const Homepage = () => {
       </section>
 
       {/* How It Works Section */}
-      <section className="w-full bg-gray-50 py-20 px-4 sm:px-6 lg:px-8">
+      <section id="how-it-works" className="w-full bg-gray-50 py-20 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-[1440px] mx-auto">
           <div className="flex flex-col items-center gap-4 mb-14">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-[Helvetica] font-normal text-gray-900 text-center">
@@ -483,8 +493,8 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* Newsletter Section */}
-      <section className="w-full bg-gradient-to-b from-[#0d0e10] via-[#1f2937] to-[#0d0e10] py-20 px-4 sm:px-6 lg:px-8">
+      {/* Community Section */}
+      <section id="community"className="w-full bg-gradient-to-b from-[#0d0e10] via-[#1f2937] to-[#0d0e10] py-20 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-[1440px] mx-auto flex flex-col items-center gap-6 text-center">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-[Helvetica] font-normal text-white">
             Join the Divvy Community
