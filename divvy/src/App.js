@@ -335,11 +335,37 @@ const FeatureItem = ({ text }) => (
   </div>
 );
 
+
+// DEMO MODAL
+const DemoModal = ({ onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+    <div className="relative z-10 w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl bg-black">
+      <button
+        onClick={onClose}
+        className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors text-lg font-bold"
+      >
+        ×
+      </button>
+      <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+        <iframe
+          className="absolute inset-0 w-full h-full"
+          src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0"
+          title="Divvy Demo"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  </div>
+);
+
 // HOMEPAGE (MAIN)
 const Homepage = () => {
   const [email, setEmail] = useState('');
   const [showSignUp, setShowSignUp] = useState(false);
-
+  const [showDemo, setShowDemo] = useState(false);
   return (
     <main className="w-full bg-white overflow-x-hidden">
 
@@ -379,6 +405,7 @@ const Homepage = () => {
                 border_border_radius="rounded-full"
                 padding="py-4 px-8"
                 className="font-[Outfit] font-medium text-lg w-full sm:w-auto"
+                onClick={() => setShowDemo(true)}
               />
             </div>
 
@@ -525,6 +552,8 @@ const Homepage = () => {
       </section>
 
       <Footer />
+      {showSignUp && <SignUpModal onClose={() => setShowSignUp(false)} />}
+      {showDemo && <DemoModal onClose={() => setShowDemo(false)} />} {/* ← add this */}
     </main>
   );
 };
