@@ -84,7 +84,7 @@ const SignUpModal = ({ onClose }) => {
 
         <div className="px-8 pt-8 pb-8 flex flex-col items-center gap-0">
           {/* Logo */}
-          <div className="w-10 h-10 mb-4 bg-gradient-to-br from-indigo-600 to-emerald-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 mb-4  from-indigo-600 to-emerald-500 rounded-lg flex items-center justify-center">
             <img src={logo} alt="Divvy Logo" className="w-[20px] h-[20px]" />
           </div>
 
@@ -366,6 +366,7 @@ const Homepage = () => {
   const [email, setEmail] = useState('');
   const [showSignUp, setShowSignUp] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
+  const navigate = useNavigate();
   return (
     <main className="w-full bg-white overflow-x-hidden">
 
@@ -396,6 +397,7 @@ const Homepage = () => {
                 border_border_radius="rounded-full"
                 padding="py-4 px-8"
                 className="font-[Helvetica] text-lg w-full sm:w-auto"
+                onClick={() => setShowSignUp(true)}
               />
               <Button
                 text="Watch Demo"
