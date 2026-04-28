@@ -85,7 +85,7 @@ const SignUpModal = ({ onClose }) => {
         <div className="px-8 pt-8 pb-8 flex flex-col items-center gap-0">
           {/* Logo */}
           <div className="w-10 h-10 mb-4 bg-gradient-to-br from-indigo-600 to-emerald-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">D</span>
+            <img src={logo} alt="Divvy Logo" className="w-[20px] h-[20px]" />
           </div>
 
           {/* Title */}
