@@ -120,7 +120,7 @@ const ExpensesContent = ({ group }) => {
   );
 };
 
-const BalancesContent = ({ group }) => {
+const BalancesContent = ({ group, user }) => {
   const currencySymbol = group?.currency?.includes("EUR") ? "€"
     : group?.currency?.includes("GBP") ? "£"
     : group?.currency?.includes("JPY") ? "¥"
@@ -144,7 +144,7 @@ const BalancesContent = ({ group }) => {
                 {name[0]}
               </div>
               <span className="text-sm font-medium text-indigo-950">{name}</span>
-              {name === "Nursanat Mussa" && (
+              {name === user?.name && (
                 <span className="text-xs bg-green-100 text-green-600 font-semibold rounded-full px-2 py-0.5">Me</span>
               )}
             </div>

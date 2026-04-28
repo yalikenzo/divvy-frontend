@@ -341,7 +341,7 @@ const SettingsPage = ({ user, onUserChange }) => {
 // ── Create Group Modal ────────────────────────────────────────────────────────
 const CURRENCIES_LIST = ["USD – US Dollar", "EUR – Euro", "GBP – British Pound", "JPY – Japanese Yen", "CAD – Canadian Dollar"];
 
-export const CreateGroupModal = ({ onClose, onCreate }) => {
+export const CreateGroupModal = ({ onClose, onCreate, user}) => {
   const [groupTitle, setGroupTitle] = useState("");
   const [currency, setCurrency] = useState("");
   const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
@@ -369,7 +369,7 @@ export const CreateGroupModal = ({ onClose, onCreate }) => {
       id: Date.now(),
       title: groupTitle.trim(),
       currency: currency || "USD – US Dollar",
-      participants: ["Nursanat Mussa", ...participants.filter((p) => p.trim())],
+      participants: [user?.name ?? "Me", ...participants.filter((p) => p.trim())],
     };
     onCreate?.(newGroup);
     onClose();
@@ -415,7 +415,7 @@ export const CreateGroupModal = ({ onClose, onCreate }) => {
           <div className="flex flex-col gap-3">
             <label className="[font-family:'Outfit',Helvetica] font-medium text-[#1e1b4b] text-sm">Participants</label>
             <div className="flex items-center justify-between h-12 px-4 bg-gray-50 rounded-[10px]">
-              <span className="[font-family:'Outfit',Helvetica] text-[#1e1b4b] text-base">Nursanat Mussa</span>
+              <span className="[font-family:'Outfit',Helvetica] text-[#1e1b4b] text-base">{user?.name}</span>
               <span className="bg-green-400 text-white text-xs font-semibold rounded-full px-3 py-0.5">Me</span>
             </div>
             {participants.map((p, i) => (
@@ -482,7 +482,7 @@ export const CreateGroup = () => {
             <div className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
               <div>
                 <h1 className="text-xl font-bold text-[#101828] capitalize">{activePage}</h1>
-                <p className="text-sm text-[#99a1af]">Welcome back, Nursanat 👋</p>
+                <p className="text-sm text-[#99a1af]">Welcome back, {user?.name}</p>
               </div>
               <Button onClick={() => setCreateGroupOpen(true)} className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold">
                 + New Group
@@ -604,7 +604,7 @@ export const CreateGroup = () => {
         )}
 
         {createGroupOpen && (
-          <CreateGroupModal onClose={() => setCreateGroupOpen(false)} onCreate={handleCreateGroup} />
+          <CreateGroupModal onClose={() => setCreateGroupOpen(false)} onCreate={handleCreateGroup} user={user} />
         )}
       </main>
     </div>
