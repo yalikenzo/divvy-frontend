@@ -366,21 +366,165 @@ const BalancesContent = ({ group, expenses }) => {
   );
 };
 
-const PhotosContent = () => (
-  <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-    <span className="text-5xl"></span>
-    <p className="[font-family:'Outfit',Helvetica] text-base font-semibold text-indigo-950">No photos yet</p>
-    <p className="[font-family:'Outfit',Helvetica] text-sm text-gray-400">Photos attached to expenses will appear here</p>
-  </div>
-);
+const PhotosContent = () => {
+  const [photos, setPhotos] = useState([]);
+  const inputRef = React.useRef(null);
 
-const ReceiptsContent = () => (
-  <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-    <span className="text-5xl"></span>
-    <p className="[font-family:'Outfit',Helvetica] text-base font-semibold text-indigo-950">No receipts yet</p>
-    <p className="[font-family:'Outfit',Helvetica] text-sm text-gray-400">Receipts attached to expenses will appear here</p>
-  </div>
-);
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPhotos((prev) => [...prev, { id: Date.now() + Math.random(), src: ev.target.result, name: file.name }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFiles}
+      />
+
+      {photos.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <span className="text-5xl"></span>
+          <p className="[font-family:'Outfit',Helvetica] text-base font-semibold text-indigo-950">No photos yet</p>
+          <p className="[font-family:'Outfit',Helvetica] text-sm text-gray-400">Add photos from your camera or library</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {photos.map((photo) => (
+            <div key={photo.id} className="group relative aspect-square rounded-xl overflow-hidden bg-gray-100">
+              <img src={photo.src} alt={photo.name} className="h-full w-full object-cover" />
+              <button
+                onClick={() => setPhotos((prev) => prev.filter((p) => p.id !== photo.id))}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex min-h-[120px] flex-1 items-end justify-center">
+        <div className="flex gap-6">
+          {/* Take photo */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              className="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white text-3xl shadow-md transition-colors"
+              onClick={() => {
+                inputRef.current.setAttribute("capture", "environment");
+                inputRef.current.removeAttribute("multiple");
+                inputRef.current.click();
+              }}
+            >
+              
+            </button>
+            <span className="[font-family:'Outfit',Helvetica] text-xs font-medium text-emerald-500">Take Photo</span>
+          </div>
+          {/* From library */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              className="w-10 h-10 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center text-white text-3xl shadow-md transition-colors"
+              onClick={() => {
+                inputRef.current.removeAttribute("capture");
+                inputRef.current.setAttribute("multiple", "true");
+                inputRef.current.click();
+              }}
+            >
+              
+            </button>
+            <span className="[font-family:'Outfit',Helvetica] text-xs font-medium text-indigo-500">From Library</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ReceiptsContent = () => {
+  const [receipts, setReceipts] = useState([]);
+  const inputRef = React.useRef(null);
+
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setReceipts((prev) => [...prev, {
+          id: Date.now() + Math.random(),
+          src: ev.target.result,
+          name: file.name,
+          date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFiles}
+      />
+
+      {receipts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <span className="text-5xl"></span>
+          <p className="[font-family:'Outfit',Helvetica] text-base font-semibold text-indigo-950">No receipts yet</p>
+          <p className="[font-family:'Outfit',Helvetica] text-sm text-gray-400">Scan a receipt to get started</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {receipts.map((r) => (
+            <div key={r.id} className="group flex items-center gap-3.5 rounded-[14px] bg-white px-4 py-3.5 shadow-[0px_1px_3px_#0000000a]">
+              <img src={r.src} alt={r.name} className="h-12 w-12 rounded-xl object-cover shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="[font-family:'Outfit',Helvetica] truncate text-sm font-semibold text-indigo-950">{r.name}</p>
+                <p className="[font-family:'Outfit',Helvetica] text-xs text-gray-400">{r.date}</p>
+              </div>
+              <span className="text-xs font-medium bg-amber-100 text-amber-600 rounded-full px-2.5 py-1">Pending scan</span>
+              <button
+                onClick={() => setReceipts((prev) => prev.filter((x) => x.id !== r.id))}
+                className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-300 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-50 hover:text-red-400"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex min-h-[120px] flex-1 items-end justify-center">
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            type="button"
+            className="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white text-3xl shadow-md transition-colors"
+            onClick={() => inputRef.current.click()}
+          >
+            
+          </button>
+          <span className="[font-family:'Outfit',Helvetica] text-xs font-medium text-emerald-500">Scan Receipt</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Expense Overview 
 const overviewTabs = [
@@ -476,7 +620,7 @@ const ExpenseOverviewSection = ({ group, onBack, onNavChange }) => {
             className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-[0px_2px_4px_-2px_#0000001a,0px_4px_6px_-1px_#0000001a]"
             style={{ background: getGroupGradient(group) }}
           >
-            <span className="text-[32px]">👥</span>
+            <span className="text-[32px]"></span>
           </div>
           <h1 className="[font-family:'Outfit',Helvetica] text-2xl font-bold text-indigo-950">
             {group?.title ?? "Unnamed Group"}
