@@ -235,7 +235,7 @@ const SettingsPage = ({ user, onUserChange }) => {
               <AvatarFallback className="bg-indigo-100 text-indigo-700 text-lg font-semibold">{user?.initials || "NM"}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold text-indigo-950 text-sm">Nursanat Mussa</p>
+              <p className="font-semibold text-indigo-950 text-sm">{user?.name}</p>
               <p className="text-[#6a7282] text-xs mt-0.5">Free Plan</p>
               <button className="mt-1 text-xs text-emerald-600 font-medium hover:text-emerald-700">Change photo</button>
             </div>
@@ -464,6 +464,7 @@ export const CreateGroup = () => {
       <GroupDetailPage
         group={selectedGroup}
         groups={groups}
+        user={user}
         onBack={() => setSelectedGroup(null)}
         onNavChange={(page) => { setSelectedGroup(null); setActivePage(page); }}
       />

@@ -531,7 +531,7 @@ const ExpenseOverviewSection = ({ group, onBack, onNavChange }) => {
 };
 
 // Main Page
-const GroupDetailPage = ({ group, groups = [], onBack, onNavChange }) => {
+const GroupDetailPage = ({ group, groups = [], user, onBack, onNavChange }) => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
       <Sidebar
@@ -544,6 +544,7 @@ const GroupDetailPage = ({ group, groups = [], onBack, onNavChange }) => {
           }
         }}
         groupCount={groups.length}
+        user={user}
       />
 
       <main className="flex-1 overflow-y-auto">
