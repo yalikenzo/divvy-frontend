@@ -6,6 +6,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Sidebar } from "./CreatingNewGroup";
+import { GroupSettingsModal } from "./components/Groups/GroupSettingsModal";
 
 // Utils
 function cn(...inputs) {
@@ -547,9 +548,10 @@ const getGroupGradient = (group) => {
   return GROUP_GRADIENTS[idx];
 };
 
-const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onNavChange }) => {
+const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onNavChange, onGroupUpdated }) => {
   const [activeTab, setActiveTab] = useState("expenses");
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const currencyCode = group?.currency?.split("–")[0]?.trim() ?? "USD";
   const currencySymbol = group?.currency?.includes("EUR") ? "€"
@@ -596,7 +598,7 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
 
   return (
     <section className="relative flex w-full flex-col">
-      <header className="flex w-full flex-col px-8 pt-5">
+      <header className="flex w-full flex-col px-4 sm:px-8 pt-5">
         <div className="flex w-full items-center justify-between">
           <button
             type="button"
@@ -607,22 +609,31 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="[font-family:'Outfit',Helvetica] text-sm font-medium">Back to Groups</span>
+            <span className="[font-family:'Outfit',Helvetica] text-sm font-medium hidden sm:inline">Back to Groups</span>
+            <span className="[font-family:'Outfit',Helvetica] text-sm font-medium sm:hidden">Back</span>
           </button>
-          <span className="text-xs font-semibold bg-gray-100 text-gray-500 rounded-full px-3 py-1">
-            {currencyCode}
-          </span>
+          <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-gray-100 rounded-full px-3 sm:px-4 py-2"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="[font-family:'Outfit',Helvetica] text-sm font-medium">Settings</span>
+          </button>
         </div>
 
         <div className="flex flex-col items-center gap-2 pt-7">
           <div
-            className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-[0px_2px_4px_-2px_#0000001a,0px_4px_6px_-1px_#0000001a]"
+            className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-[0px_2px_4px_-2px_#0000001a,0px_4px_6px_-1px_#0000001a]"
             style={{ background: getGroupGradient(group) }}
           >
-            <span className="text-[32px]"></span>
+            <span className="text-[28px] sm:text-[32px]"></span>
           </div>
-          <h1 className="[font-family:'Outfit',Helvetica] text-2xl font-bold text-indigo-950">
-            {group?.title ?? "Unnamed Group"}
+          <h1 className="[font-family:'Outfit',Helvetica] text-xl sm:text-2xl font-bold text-indigo-950 text-center px-4">
+            {group?.title ?? group?.name ?? "Unnamed Group"}
           </h1>
           <p className="text-sm text-gray-400">
             {group?.participants?.length ?? 0} member{(group?.participants?.length ?? 0) !== 1 ? "s" : ""}
@@ -658,7 +669,7 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
         </Tabs>
       </header>
 
-      <div className="flex w-full flex-col px-8 pb-6 pt-6">
+      <div className="flex w-full flex-col px-4 sm:px-8 pb-6 pt-6">
         {renderContent()}
       </div>
 
@@ -669,34 +680,49 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
         members={group?.participants ?? []}
         currencySymbol={currencySymbol}
       />
+
+      {showSettings && (
+        <GroupSettingsModal
+          group={group}
+          onClose={() => setShowSettings(false)}
+          onGroupUpdated={(updatedGroup) => {
+            onGroupUpdated?.(updatedGroup);
+            setShowSettings(false);
+          }}
+        />
+      )}
     </section>
   );
 };
 
 // Main Page
-const GroupDetailPage = ({ group, groups = [], user, expenses, onExpensesChange, onBack, onNavChange }) => {
+const GroupDetailPage = ({ group, groups = [], user, expenses, onExpensesChange, onBack, onNavChange, onGroupUpdated }) => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
-      <Sidebar
-        activeNav="groups"
-        onNavChange={(page) => {
-          if (page === "groups") {
-            onBack?.();
-          } else {
-            onNavChange?.(page);
-          }
-        }}
-        groupCount={groups.length}
-        user={user}
-      />
+      {/* Sidebar скрыт на мобильных */}
+      <div className="hidden lg:block">
+        <Sidebar
+          activeNav="groups"
+          onNavChange={(page) => {
+            if (page === "groups") {
+              onBack?.();
+            } else {
+              onNavChange?.(page);
+            }
+          }}
+          groupCount={groups.length}
+          user={user}
+        />
+      </div>
 
       <main className="flex-1 overflow-y-auto">
         <ExpenseOverviewSection
-           group={group}
+          group={group}
           expenses={expenses}
           onExpensesChange={onExpensesChange}
           onBack={onBack}
           onNavChange={onNavChange}
+          onGroupUpdated={onGroupUpdated}
         />
       </main>
     </div>

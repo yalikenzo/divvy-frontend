@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { Slot } from "@radix-ui/react-slot";
-import { cva } from "class-variance-authority";
 import * as React from "react";
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
+import { useParams, useNavigate } from "react-router-dom";
 import GroupDetailPage from "./GroupDetailPage";
+import { cn } from "./utils/cn";
+import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "./components/ui/FormComponents";
+import { CreateGroupModal } from "./components/Groups/CreateGroupModal";
+import { groupApi } from "./api/groupApi";
+import { useAuth } from "./hooks/useAuth";
 
-// Utils
-export function cn(...inputs) {
-  return twMerge(clsx(inputs));
-}
-
-//  Separator 
+// Separator 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
     <SeparatorPrimitive.Root
@@ -30,75 +27,6 @@ const Separator = React.forwardRef(
 );
 Separator.displayName = SeparatorPrimitive.Root.displayName;
 
-//  Button 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
-      },
-    },
-    defaultVariants: { variant: "default", size: "default" },
-  }
-);
-
-export const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-});
-Button.displayName = "Button";
-
-//  Card
-export const Card = React.forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-xl border bg-card text-card-foreground shadow", className)} {...props} />
-));
-Card.displayName = "Card";
-
-export const CardContent = React.forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-));
-CardContent.displayName = "CardContent";
-
-//  Input 
-export const Input = React.forwardRef(({ className, type, ...props }, ref) => (
-  <input
-    type={type}
-    className={cn(
-      "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-      className
-    )}
-    ref={ref}
-    {...props}
-  />
-));
-Input.displayName = "Input";
-
-// Label 
-const Label = ({ className, ...props }) => (
-  <label className={cn("text-sm font-medium leading-none", className)} {...props} />
-);
-
-// Avatar 
-const Avatar = ({ className, children }) => (
-  <div className={cn("relative flex shrink-0 overflow-hidden rounded-full", className)}>{children}</div>
-);
-const AvatarFallback = ({ className, children }) => (
-  <div className={cn("flex h-full w-full items-center justify-center rounded-full bg-gray-100", className)}>
-    {children}
-  </div>
-);
 
 //  Shared Sidebar 
 export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
@@ -338,137 +266,109 @@ const SettingsPage = ({ user, onUserChange }) => {
   );
 };
 
-// Create Group Modal
-const CURRENCIES_LIST = ["USD – US Dollar", "EUR – Euro", "GBP – British Pound", "JPY – Japanese Yen", "CAD – Canadian Dollar"];
-
-export const CreateGroupModal = ({ onClose, onCreate, user}) => {
-  const [groupTitle, setGroupTitle] = useState("");
-  const [currency, setCurrency] = useState("");
-  const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
-  const [participants, setParticipants] = useState([""]);
-  const firstFocusRef = useRef(null);
-
-  useEffect(() => {
-    firstFocusRef.current?.focus();
-    const handleKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handleKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
-
-  const addParticipant = () => setParticipants((p) => [...p, ""]);
-  const updateParticipant = (i, val) => setParticipants((p) => p.map((v, idx) => idx === i ? val : v));
-  const removeParticipant = (i) => setParticipants((p) => p.filter((_, idx) => idx !== i));
-
-  const handleCreate = () => {
-    if (!groupTitle.trim()) return;
-    const newGroup = {
-      id: Date.now(),
-      title: groupTitle.trim(),
-      currency: currency || "USD – US Dollar",
-      participants: [user?.name ?? "Me", ...participants.filter((p) => p.trim())],
-    };
-    onCreate?.(newGroup);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-[#00000066] backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-[480px] mx-4 bg-white rounded-2xl shadow-[0px_25px_50px_-12px_#00000040] overflow-hidden">
-        <div className="flex items-center justify-between px-8 pt-8 pb-0">
-          <h2 className="[font-family:'Outfit',Helvetica] font-semibold text-[#1e1b4b] text-2xl">Add new group</h2>
-          <button ref={firstFocusRef} onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-[#99a1af] hover:bg-gray-100 transition-colors text-xl">×</button>
-        </div>
-        <div className="px-8 pt-6 pb-8 flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <label className="[font-family:'Outfit',Helvetica] font-medium text-[#1e1b4b] text-sm">Group Title</label>
-            <div className="relative flex items-center">
-              <span className="absolute left-3 text-xl select-none pointer-events-none top-1/2 -translate-y-1/2"></span>
-              <Input value={groupTitle} onChange={(e) => setGroupTitle(e.target.value)} placeholder="E.g. City Trip" className="h-[50px] pl-11 pr-4 rounded-[10px] border border-[#d1d5dc] text-base bg-white" />
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="[font-family:'Outfit',Helvetica] font-medium text-[#1e1b4b] text-sm">Currency</label>
-            <div className="relative">
-              <button type="button" onClick={() => setShowCurrencyDrop((v) => !v)} className="w-full h-[50px] px-4 rounded-[10px] border border-[#d1d5dc] bg-white flex items-center justify-between text-base hover:border-indigo-300 transition-colors focus:outline-none">
-                <span className={currency ? "text-[#1e1b4b]" : "text-[#0a0a0a50]"}>{currency || "Select currency"}</span>
-                <svg className={`w-4 h-4 text-[#99a1af] transition-transform ${showCurrencyDrop ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {showCurrencyDrop && (
-                <div className="absolute top-[54px] left-0 right-0 bg-white border border-[#d1d5dc] rounded-[10px] shadow-lg z-20 overflow-hidden">
-                  {CURRENCIES_LIST.map((c) => (
-                    <button key={c} type="button" onClick={() => { setCurrency(c); setShowCurrencyDrop(false); }}
-                      className={`w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 transition-colors ${currency === c ? "bg-indigo-50 text-indigo-700 font-medium" : "text-[#364153]"}`}>
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col gap-3">
-            <label className="[font-family:'Outfit',Helvetica] font-medium text-[#1e1b4b] text-sm">Participants</label>
-            <div className="flex items-center justify-between h-12 px-4 bg-gray-50 rounded-[10px]">
-              <span className="[font-family:'Outfit',Helvetica] text-[#1e1b4b] text-base">{user?.name}</span>
-              <span className="bg-green-400 text-white text-xs font-semibold rounded-full px-3 py-0.5">Me</span>
-            </div>
-            {participants.map((p, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Input value={p} onChange={(e) => updateParticipant(i, e.target.value)} placeholder="Participant Name" className="h-[50px] px-4 rounded-[10px] border border-[#d1d5dc] text-base bg-white" />
-                {participants.length > 1 && (
-                  <button type="button" onClick={() => removeParticipant(i)} className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[#99a1af] hover:bg-rose-50 hover:text-rose-400 transition-colors text-lg">×</button>
-                )}
-              </div>
-            ))}
-            <button type="button" onClick={addParticipant} className="flex items-center gap-2 w-fit group">
-              <div className="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center text-white text-sm group-hover:bg-green-500 transition-colors">+</div>
-              <span className="[font-family:'Outfit',Helvetica] font-medium text-green-400 text-base group-hover:text-green-500 transition-colors">Add Another Participant</span>
-            </button>
-          </div>
-          <Button onClick={handleCreate} disabled={!groupTitle.trim()} className="w-full h-14 bg-green-400 hover:bg-green-500 disabled:opacity-50 rounded-[10px] font-bold text-white text-base transition-colors mt-1">
-            Create group
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Main App
 export const CreateGroup = () => {
+  const { user: authUser } = useAuth();
+  const { groupId } = useParams();
+  const navigate = useNavigate();
+
   const [activePage, setActivePage] = useState("dashboard");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groups, setGroups] = useState([]);
   const [allExpenses, setAllExpenses] = useState({});
-  const [selectedGroup, setSelectedGroup] = useState(null); // ← tracks which group is open
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+
   const [user, setUser] = useState({
-  name: "Nursanat Mussa",
-  email: "hello@divvyapp.com",
-  initials: "NM",
+    name: authUser?.getFullName() || "User",
+    email: authUser?.email || "",
+    initials: authUser?.first_name?.[0] + (authUser?.last_name?.[0] || "") || "U",
   });
 
-  const handleCreateGroup = (newGroup) => {
-    setGroups((g) => [newGroup, ...g]);
+  // Загружаем группы при монтировании
+  useEffect(() => {
+    loadGroups();
+  }, []);
+
+  // Открываем группу по URL параметру
+  useEffect(() => {
+    if (groupId && groups.length > 0) {
+      const group = groups.find(g => g.id === parseInt(groupId));
+      if (group) {
+        setSelectedGroup(group);
+        setActivePage("groups");
+      }
+    }
+  }, [groupId, groups]);
+
+  const loadGroups = async () => {
+    setIsLoadingGroups(true);
+    try {
+      const fetchedGroups = await groupApi.getGroups();
+      // Преобразуем в формат, который использует компонент
+      const mappedGroups = fetchedGroups.map(group => ({
+        id: group.id,
+        title: group.name,
+        currency: group.currency,
+        participants: [user.name], // TODO: добавить реальных участников когда API будет готов
+        invitation_link: group.invitation_link,
+      }));
+      setGroups(mappedGroups);
+    } catch (error) {
+      console.error('Failed to load groups:', error);
+    } finally {
+      setIsLoadingGroups(false);
+    }
+  };
+
+  const handleCreateGroup = async (newGroup) => {
+    // Преобразуем Group объект в формат компонента
+    const mappedGroup = {
+      id: newGroup.id,
+      title: newGroup.name,
+      currency: newGroup.currency,
+      participants: [user.name],
+      invitation_link: newGroup.invitation_link,
+    };
+    setGroups((g) => [mappedGroup, ...g]);
     setActivePage("groups");
+  };
+
+  // Обработчик обновления группы
+  const handleGroupUpdated = (updatedGroup) => {
+    const mappedGroup = {
+      id: updatedGroup.id,
+      title: updatedGroup.name,
+      name: updatedGroup.name,
+      currency: updatedGroup.currency,
+      participants: selectedGroup?.participants || [user.name],
+      invitation_link: updatedGroup.invitation_link,
+    };
+
+    setGroups(prev => prev.map(g => g.id === updatedGroup.id ? mappedGroup : g));
+    setSelectedGroup(mappedGroup);
   };
 
   // If a group is selected, show GroupDetailPage
   if (selectedGroup) {
     return (
       <GroupDetailPage
-      group={selectedGroup}
-      groups={groups}
-      user={user}
-      expenses={allExpenses[selectedGroup?.id] ?? []}
-      onExpensesChange={(updated) => setAllExpenses(prev => ({ ...prev, [selectedGroup.id]: updated }))}
-      onBack={() => setSelectedGroup(null)}
-      onNavChange={(page) => { setSelectedGroup(null); setActivePage(page); }}
+        group={selectedGroup}
+        groups={groups}
+        user={user}
+        expenses={allExpenses[selectedGroup?.id] ?? []}
+        onExpensesChange={(updated) => setAllExpenses(prev => ({ ...prev, [selectedGroup.id]: updated }))}
+        onBack={() => {
+          setSelectedGroup(null);
+          navigate('/groups');
+        }}
+        onNavChange={(page) => {
+          setSelectedGroup(null);
+          setActivePage(page);
+          navigate(`/${page}`);
+        }}
+        onGroupUpdated={handleGroupUpdated}
       />
     );
   }
@@ -500,26 +400,31 @@ export const CreateGroup = () => {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
-      <Sidebar activeNav={activePage} onNavChange={setActivePage} groupCount={groups.length} user={user} />
+      {/* Sidebar скрыт на мобильных, показывается на lg+ */}
+      <div className="hidden lg:block">
+        <Sidebar activeNav={activePage} onNavChange={setActivePage} groupCount={groups.length} user={user} />
+      </div>
 
       <main className="flex-1 overflow-y-auto flex flex-col">
         {activePage === "settings" && <SettingsPage user={user} onUserChange={setUser} />}
 
         {activePage !== "settings" && (
           <>
-            <div className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+            <div className="bg-white border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-10">
               <div>
-                <h1 className="text-xl font-bold text-[#101828] capitalize">{activePage}</h1>
-                <p className="text-sm text-[#99a1af]">Welcome back, {user?.name}</p>
+                <h1 className="text-lg sm:text-xl font-bold text-[#101828] capitalize">{activePage}</h1>
+                <p className="text-xs sm:text-sm text-[#99a1af]">Welcome back, {user?.name}</p>
               </div>
-              <Button onClick={() => setCreateGroupOpen(true)} className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold">
-                + New Group
-              </Button>
+              {groups.length > 0 && (
+                <Button onClick={() => setCreateGroupOpen(true)} className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold">
+                  + New Group
+                </Button>
+              )}
             </div>
 
             {activePage === "dashboard" && (
-              <div className="px-8 py-8 flex flex-col gap-8">
-                <div className="grid grid-cols-3 gap-6">
+              <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {[
                     { label: "Total Splits", value: `${currencySymbol}${totalSplits.toFixed(2)}`, sub: allExpensesList.length > 0 ? `${allExpensesList.length} expense${allExpensesList.length !== 1 ? "s" : ""}` : "No activity yet", color: "text-indigo-600" },
                     { label: "You Owe", value: `${currencySymbol}${youOwe.toFixed(2)}`, sub: youOwe === 0 ? "All clear" : "Across all groups", color: "text-rose-500" },
@@ -573,24 +478,21 @@ export const CreateGroup = () => {
             )}
 
             {activePage === "groups" && (
-              <div className="px-8 py-8 flex flex-col gap-6">
+              <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl font-bold text-[#101828]">My Groups</h2>
                     <p className="text-sm text-[#99a1af] mt-0.5">{groups.length} group{groups.length !== 1 ? "s" : ""}</p>
                   </div>
-                  <Button onClick={() => setCreateGroupOpen(true)} className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold">
-                    + New Group
-                  </Button>
                 </div>
 
                 {groups.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-                    <div className="text-5xl"></div>
+                    <div className="text-5xl">📁</div>
                     <p className="font-semibold text-[#101828] text-lg">No groups yet</p>
                     <p className="text-sm text-[#99a1af] max-w-xs">Create your first group to start splitting bills with friends</p>
                     <Button onClick={() => setCreateGroupOpen(true)} className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold mt-2">
-                      + Create Group
+                      + Create group
                     </Button>
                   </div>
                 ) : (
@@ -599,7 +501,10 @@ export const CreateGroup = () => {
                       // ← clicking a card opens GroupDetailPage
                       <div
                         key={group.id}
-                        onClick={() => setSelectedGroup(group)}
+                        onClick={() => {
+                          setSelectedGroup(group);
+                          navigate(`/groups/${group.id}`);
+                        }}
                         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-md transition-shadow cursor-pointer"
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -626,7 +531,7 @@ export const CreateGroup = () => {
                     ))}
                     <button onClick={() => setCreateGroupOpen(true)} className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 flex flex-col items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all cursor-pointer min-h-[180px] group">
                       <div className="w-11 h-11 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center text-indigo-400 text-2xl transition-colors">+</div>
-                      <span className="font-medium text-[#99a1af] group-hover:text-indigo-500 text-sm transition-colors">Create new group</span>
+                      <span className="font-medium text-[#99a1af] group-hover:text-indigo-500 text-sm transition-colors">Create group</span>
                     </button>
                   </div>
                 )}
@@ -636,7 +541,10 @@ export const CreateGroup = () => {
         )}
 
         {createGroupOpen && (
-          <CreateGroupModal onClose={() => setCreateGroupOpen(false)} onCreate={handleCreateGroup} user={user} />
+          <CreateGroupModal 
+            onClose={() => setCreateGroupOpen(false)} 
+            onGroupCreated={handleCreateGroup}
+          />
         )}
       </main>
     </div>

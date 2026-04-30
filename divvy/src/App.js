@@ -10,14 +10,70 @@ import img5 from './img5.jpg';
 import vector1 from './dollar.svg';
 import logo from './divvylogo.svg';
 import { CreateGroup } from './CreatingNewGroup';
+import { AuthProvider } from './context/AuthContext';
+import { RegisterForm } from './components/Auth/RegisterForm';
+import { LoginForm } from './components/Auth/LoginForm';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Homepage />} />
-        <Route path="/create" element={<CreateGroup />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/register" element={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+              <RegisterForm />
+            </div>
+          } />
+          <Route path="/login" element={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+              <LoginForm />
+            </div>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <CreateGroup />
+            </ProtectedRoute>
+          } />
+          <Route path="/groups" element={
+            <ProtectedRoute>
+              <CreateGroup />
+            </ProtectedRoute>
+          } />
+          <Route path="/groups/:groupId" element={
+            <ProtectedRoute>
+              <CreateGroup />
+            </ProtectedRoute>
+          } />
+          <Route path="/create" element={
+            <ProtectedRoute>
+              <CreateGroup />
+            </ProtectedRoute>
+          } />
+          {/* Маршрут для верификации email */}
+          <Route path="/verify-email" element={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+              <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h2 className="font-[Outfit] font-bold text-[#101828] text-2xl mb-3">
+                  Check Your Email
+                </h2>
+                <p className="font-[Outfit] text-[#4a5565] text-base mb-6">
+                  We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.
+                </p>
+                <p className="font-[Outfit] text-[#99a1af] text-sm">
+                  Didn't receive the email? Check your spam folder or contact support.
+                </p>
+              </div>
+            </div>
+          } />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
@@ -36,12 +92,8 @@ const Button = ({ text, fill_background_color, text_color, border_border, border
 
 // SIGN UP MODAL
 const SignUpModal = ({ onClose }) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const firstFocusRef = useRef(null);
   const navigate = useNavigate();
+  const firstFocusRef = useRef(null);
 
   useEffect(() => {
     firstFocusRef.current?.focus();
@@ -55,6 +107,16 @@ const SignUpModal = ({ onClose }) => {
       document.body.style.overflow = '';
     };
   }, [onClose]);
+
+  const handleRegisterClick = () => {
+    onClose();
+    navigate('/register');
+  };
+
+  const handleLoginClick = () => {
+    onClose();
+    navigate('/login');
+  };
 
   return (
     <div
@@ -84,7 +146,7 @@ const SignUpModal = ({ onClose }) => {
 
         <div className="px-8 pt-8 pb-8 flex flex-col items-center gap-0">
           {/* Logo */}
-          <div className="w-10 h-10 mb-4  from-indigo-600 to-emerald-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 mb-4 from-indigo-600 to-emerald-500 rounded-lg flex items-center justify-center">
             <img src={logo} alt="Divvy Logo" className="w-[20px] h-[20px]" />
           </div>
 
@@ -93,13 +155,13 @@ const SignUpModal = ({ onClose }) => {
             id="signup-modal-title"
             className="font-[Outfit] font-bold text-[#101828] text-2xl leading-8 text-center"
           >
-            Create your account
+            Get Started with Divvy
           </h2>
           <p className="font-[Outfit] font-normal text-[#4a5565] text-sm leading-5 text-center mt-1 mb-6">
             Start splitting bills fairly with AI
           </p>
 
-          {/* Social buttons */}
+          {/* Social buttons (будут реализованы позже) */}
           <div className="flex flex-col gap-3 w-full mb-5">
             <button className="flex items-center justify-center gap-3 w-full h-11 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors font-[Outfit] font-medium text-[#364153] text-sm">
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -110,12 +172,6 @@ const SignUpModal = ({ onClose }) => {
               </svg>
               Continue with Google
             </button>
-            <button className="flex items-center justify-center gap-3 w-full h-11 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors font-[Outfit] font-medium text-[#364153] text-sm">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.701z"/>
-              </svg>
-              Continue with Apple
-            </button>
           </div>
 
           {/* Divider */}
@@ -125,75 +181,19 @@ const SignUpModal = ({ onClose }) => {
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
-          {/* Form fields */}
-          <div className="flex flex-col gap-4 w-full mb-5">
-            <div className="flex flex-col gap-1.5">
-              <label className="font-[Outfit] font-medium text-[#364153] text-sm leading-5">Full Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Nursanat Mussa"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-gray-200 font-[Outfit] text-[#364153] text-sm placeholder:text-[#99a1af] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="font-[Outfit] font-medium text-[#364153] text-sm leading-5">Email address</label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-gray-200 font-[Outfit] text-[#364153] text-sm placeholder:text-[#99a1af] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="font-[Outfit] font-medium text-[#364153] text-sm leading-5">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Create a password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-11 px-4 pr-11 rounded-xl border border-gray-200 font-[Outfit] text-[#364153] text-sm placeholder:text-[#99a1af] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#99a1af] hover:text-[#364153] transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Sign Up button */}
           <button
             className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 rounded-full font-[Outfit] font-semibold text-white text-base transition-colors mb-4"
-            onClick={() => {
-              onClose();
-              navigate('/create');
-            }}
+            onClick={handleRegisterClick}
           >
-            Sign Up
+            Sign Up with Email
           </button>
 
           {/* Log in link */}
           <p className="font-[Outfit] text-[#4a5565] text-sm text-center">
             Already have an account?{' '}
             <button
-              onClick={onClose}
+              onClick={handleLoginClick}
               className="font-[Outfit] font-bold text-[#101828] hover:text-indigo-600 transition-colors"
             >
               Log in
