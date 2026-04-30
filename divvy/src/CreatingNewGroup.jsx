@@ -7,12 +7,12 @@ import * as React from "react";
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
 import GroupDetailPage from "./GroupDetailPage";
 
-// ── Utils ─────────────────────────────────────────────────────────────────────
+// Utils
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// ── Separator ─────────────────────────────────────────────────────────────────
+//  Separator 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
     <SeparatorPrimitive.Root
@@ -30,7 +30,7 @@ const Separator = React.forwardRef(
 );
 Separator.displayName = SeparatorPrimitive.Root.displayName;
 
-// ── Button ────────────────────────────────────────────────────────────────────
+//  Button 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
@@ -60,7 +60,7 @@ export const Button = React.forwardRef(({ className, variant, size, asChild = fa
 });
 Button.displayName = "Button";
 
-// ── Card ──────────────────────────────────────────────────────────────────────
+//  Card
 export const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div ref={ref} className={cn("rounded-xl border bg-card text-card-foreground shadow", className)} {...props} />
 ));
@@ -71,7 +71,7 @@ export const CardContent = React.forwardRef(({ className, ...props }, ref) => (
 ));
 CardContent.displayName = "CardContent";
 
-// ── Input ─────────────────────────────────────────────────────────────────────
+//  Input 
 export const Input = React.forwardRef(({ className, type, ...props }, ref) => (
   <input
     type={type}
@@ -85,12 +85,12 @@ export const Input = React.forwardRef(({ className, type, ...props }, ref) => (
 ));
 Input.displayName = "Input";
 
-// ── Label ─────────────────────────────────────────────────────────────────────
+// Label 
 const Label = ({ className, ...props }) => (
   <label className={cn("text-sm font-medium leading-none", className)} {...props} />
 );
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
+// Avatar 
 const Avatar = ({ className, children }) => (
   <div className={cn("relative flex shrink-0 overflow-hidden rounded-full", className)}>{children}</div>
 );
@@ -100,7 +100,7 @@ const AvatarFallback = ({ className, children }) => (
   </div>
 );
 
-// ── Shared Sidebar ────────────────────────────────────────────────────────────
+//  Shared Sidebar 
 export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
   <aside className="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 h-full">
     <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
@@ -141,7 +141,7 @@ export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
   </aside>
 );
 
-// ── Empty State ───────────────────────────────────────────────────────────────
+// Empty State
 const EmptyState = ({ icon, title, subtitle, action }) => (
   <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
     <div className="text-5xl">{icon}</div>
@@ -151,7 +151,7 @@ const EmptyState = ({ icon, title, subtitle, action }) => (
   </div>
 );
 
-// ── Settings helpers ──────────────────────────────────────────────────────────
+// Settings helpers
 const Section = ({ title, description, children }) => (
   <Card className="bg-white rounded-[14px] border border-gray-100 shadow-[0px_1px_2px_-1px_#0000001a,0px_1px_3px_#0000001a] w-full">
     <CardContent className="p-0">
@@ -179,7 +179,7 @@ const Toggle = ({ checked, onChange, label, description }) => (
   </div>
 );
 
-// ── Settings Page ─────────────────────────────────────────────────────────────
+// Settings Page
 const SettingsPage = ({ user, onUserChange }) => {
   const [displayName, setDisplayName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -338,7 +338,7 @@ const SettingsPage = ({ user, onUserChange }) => {
   );
 };
 
-// ── Create Group Modal ────────────────────────────────────────────────────────
+// Create Group Modal
 const CURRENCIES_LIST = ["USD – US Dollar", "EUR – Euro", "GBP – British Pound", "JPY – Japanese Yen", "CAD – Canadian Dollar"];
 
 export const CreateGroupModal = ({ onClose, onCreate, user}) => {
@@ -387,7 +387,7 @@ export const CreateGroupModal = ({ onClose, onCreate, user}) => {
           <div className="flex flex-col gap-2">
             <label className="[font-family:'Outfit',Helvetica] font-medium text-[#1e1b4b] text-sm">Group Title</label>
             <div className="relative flex items-center">
-              <span className="absolute left-3 text-xl select-none pointer-events-none top-1/2 -translate-y-1/2">🗽</span>
+              <span className="absolute left-3 text-xl select-none pointer-events-none top-1/2 -translate-y-1/2"></span>
               <Input value={groupTitle} onChange={(e) => setGroupTitle(e.target.value)} placeholder="E.g. City Trip" className="h-[50px] pl-11 pr-4 rounded-[10px] border border-[#d1d5dc] text-base bg-white" />
             </div>
           </div>
@@ -440,7 +440,7 @@ export const CreateGroupModal = ({ onClose, onCreate, user}) => {
   );
 };
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// Main App
 export const CreateGroup = () => {
   const [activePage, setActivePage] = useState("dashboard");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
