@@ -547,9 +547,8 @@ const getGroupGradient = (group) => {
   return GROUP_GRADIENTS[idx];
 };
 
-const ExpenseOverviewSection = ({ group, onBack, onNavChange }) => {
+const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onNavChange }) => {
   const [activeTab, setActiveTab] = useState("expenses");
-  const [expenses, setExpenses] = useState([]);
   const [showAddExpense, setShowAddExpense] = useState(false);
 
   const currencyCode = group?.currency?.split("–")[0]?.trim() ?? "USD";
@@ -559,11 +558,11 @@ const ExpenseOverviewSection = ({ group, onBack, onNavChange }) => {
     : "$";
 
   const addExpense = (newExpense) => {
-    setExpenses((prev) => [...prev, { ...newExpense, id: Date.now() }]);
+  onExpensesChange([...expenses, { ...newExpense, id: Date.now() }]);
   };
 
   const deleteExpense = (id) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    onExpensesChange(expenses.filter((e) => e.id !== id));
   };
 
   const renderContent = () => {
@@ -675,7 +674,7 @@ const ExpenseOverviewSection = ({ group, onBack, onNavChange }) => {
 };
 
 // Main Page
-const GroupDetailPage = ({ group, groups = [], user, onBack, onNavChange }) => {
+const GroupDetailPage = ({ group, groups = [], user, expenses, onExpensesChange, onBack, onNavChange }) => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
       <Sidebar
@@ -693,7 +692,9 @@ const GroupDetailPage = ({ group, groups = [], user, onBack, onNavChange }) => {
 
       <main className="flex-1 overflow-y-auto">
         <ExpenseOverviewSection
-          group={group}
+           group={group}
+          expenses={expenses}
+          onExpensesChange={onExpensesChange}
           onBack={onBack}
           onNavChange={onNavChange}
         />

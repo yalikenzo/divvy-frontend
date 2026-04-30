@@ -445,7 +445,7 @@ export const CreateGroup = () => {
   const [activePage, setActivePage] = useState("dashboard");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groups, setGroups] = useState([]);
-  const [bills, setBills] = useState([]);
+  const [allExpenses, setAllExpenses] = useState({});
   const [selectedGroup, setSelectedGroup] = useState(null); // ← tracks which group is open
   const [user, setUser] = useState({
   name: "Nursanat Mussa",
@@ -462,14 +462,41 @@ export const CreateGroup = () => {
   if (selectedGroup) {
     return (
       <GroupDetailPage
-        group={selectedGroup}
-        groups={groups}
-        user={user}
-        onBack={() => setSelectedGroup(null)}
-        onNavChange={(page) => { setSelectedGroup(null); setActivePage(page); }}
+      group={selectedGroup}
+      groups={groups}
+      user={user}
+      expenses={allExpenses[selectedGroup?.id] ?? []}
+      onExpensesChange={(updated) => setAllExpenses(prev => ({ ...prev, [selectedGroup.id]: updated }))}
+      onBack={() => setSelectedGroup(null)}
+      onNavChange={(page) => { setSelectedGroup(null); setActivePage(page); }}
       />
     );
   }
+  // Compute dashboard stats across all groups
+  const allExpensesList = Object.entries(allExpenses).flatMap(([groupId, exps]) => {
+    const group = groups.find(g => g.id === Number(groupId));
+    return exps.map(e => ({ ...e, group }));
+  });
+
+  const totalSplits = allExpensesList.reduce((s, e) => s + e.amount, 0);
+
+  const youOwe = allExpensesList.reduce((s, e) => {
+    if (!e.group) return s;
+    const members = e.group.participants.length;
+    const share = e.amount / members;
+    if (e.paidBy !== user.name) return s + share;
+    return s;
+  }, 0);
+
+  const owedToYou = allExpensesList.reduce((s, e) => {
+    if (!e.group) return s;
+    const members = e.group.participants.length;
+    const share = e.amount / members;
+    if (e.paidBy === user.name) return s + (e.amount - share);
+    return s;
+  }, 0);
+
+  const currencySymbol = "$";
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
@@ -494,9 +521,9 @@ export const CreateGroup = () => {
               <div className="px-8 py-8 flex flex-col gap-8">
                 <div className="grid grid-cols-3 gap-6">
                   {[
-                    { label: "Total Splits", value: "$0.00", sub: "No activity yet", color: "text-indigo-600" },
-                    { label: "You Owe", value: "$0.00", sub: "All clear", color: "text-rose-500" },
-                    { label: "Owed to You", value: "$0.00", sub: "No pending", color: "text-emerald-500" },
+                    { label: "Total Splits", value: `${currencySymbol}${totalSplits.toFixed(2)}`, sub: allExpensesList.length > 0 ? `${allExpensesList.length} expense${allExpensesList.length !== 1 ? "s" : ""}` : "No activity yet", color: "text-indigo-600" },
+                    { label: "You Owe", value: `${currencySymbol}${youOwe.toFixed(2)}`, sub: youOwe === 0 ? "All clear" : "Across all groups", color: "text-rose-500" },
+                    { label: "Owed to You", value: `${currencySymbol}${owedToYou.toFixed(2)}`, sub: owedToYou === 0 ? "No pending" : "Across all groups", color: "text-emerald-500" },
                   ].map((s) => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 px-6 py-5 shadow-sm flex flex-col gap-1">
                       <span className="text-sm text-[#99a1af]">{s.label}</span>
@@ -505,20 +532,44 @@ export const CreateGroup = () => {
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-[1fr_-5px] gap-6">
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm w-full">
-                  <div className="px-6 py-5 border-b border-gray-100">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm w-full">
+                  <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="font-semibold text-[#101828] text-base">Recent Bills</h2>
+                    {allExpensesList.length > 0 && (
+                      <span className="text-xs text-[#99a1af]">{allExpensesList.length} total</span>
+                    )}
                   </div>
-                  <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                    <span className="text-4xl"></span>
-                    <p className="font-semibold text-[#101828]">No bills yet</p>
-                    <p className="text-sm text-[#99a1af]">Scan a receipt or create a group to get started</p>
-                  </div>
+                  {allExpensesList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                      <span className="text-4xl">🧾</span>
+                      <p className="font-semibold text-[#101828]">No bills yet</p>
+                      <p className="text-sm text-[#99a1af]">Add expenses to a group to see them here</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col divide-y divide-gray-50">
+                      {allExpensesList.slice(0, 10).map((exp) => (
+                        <div key={exp.id} className="flex items-center gap-3.5 px-6 py-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-xl">
+                            {exp.categoryEmoji}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-[#101828]">{exp.title}</p>
+                            <p className="text-xs text-[#99a1af]">
+                              {exp.group?.title ?? "Unknown group"} · {exp.paidBy} · {exp.date}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-bold text-[#101828]">{currencySymbol}{exp.amount.toFixed(2)}</p>
+                            <p className="text-xs text-[#99a1af]">{exp.category}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                   
                 </div>
-              </div>
+              
             )}
 
             {activePage === "groups" && (
