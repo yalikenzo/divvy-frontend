@@ -295,7 +295,7 @@ const ExpensesContent = ({ group, expenses, onAddExpense, onDeleteExpense }) => 
         <div className="flex flex-col items-center gap-1.5">
           <button
             type="button"
-            className="w-20 h-20 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white text-3xl shadow-md transition-colors"
+            className="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white text-3xl shadow-md transition-colors"
             aria-label="Add Expense"
             onClick={onAddExpense}
           >
