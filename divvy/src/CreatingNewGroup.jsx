@@ -505,38 +505,18 @@ export const CreateGroup = () => {
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-[1fr_340px] gap-6">
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-                    <div className="px-6 py-5 border-b border-gray-100">
-                      <h2 className="font-semibold text-[#101828] text-base">Recent Bills</h2>
-                    </div>
-                    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                      <span className="text-4xl"></span>
-                      <p className="font-semibold text-[#101828]">No bills yet</p>
-                      <p className="text-sm text-[#99a1af]">Scan a receipt or create a group to get started</p>
-                    </div>
+                <div className="grid grid-cols-[1fr_-5px] gap-6">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm w-full">
+                  <div className="px-6 py-5 border-b border-gray-100">
+                    <h2 className="font-semibold text-[#101828] text-base">Recent Bills</h2>
                   </div>
-                  <div className="flex flex-col gap-6">
-                    <div className="bg-[linear-gradient(135deg,rgba(79,70,229,1)_0%,rgba(16,185,129,1)_100%)] rounded-2xl p-6 flex flex-col gap-4 text-white shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl"></div>
-                        <div>
-                          <p className="font-semibold text-base">Scan a Receipt</p>
-                          <p className="text-white/70 text-xs mt-0.5">AI-powered recognition</p>
-                        </div>
-                      </div>
-                      <p className="text-white/80 text-sm">Snap a photo and Divvy splits the bill instantly.</p>
-                      <Button className="w-full bg-white text-indigo-600 hover:bg-white/90 rounded-xl font-semibold text-sm h-10">Open Scanner</Button>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-                      <div className="px-5 py-4 border-b border-gray-100">
-                        <h2 className="font-semibold text-[#101828] text-base">Friend Balances</h2>
-                      </div>
-                      <div className="px-5 py-8 flex flex-col items-center gap-2 text-center">
-                        <p className="text-sm text-[#99a1af]">No balances yet. Add friends to a group to get started.</p>
-                      </div>
-                    </div>
+                  <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                    <span className="text-4xl"></span>
+                    <p className="font-semibold text-[#101828]">No bills yet</p>
+                    <p className="text-sm text-[#99a1af]">Scan a receipt or create a group to get started</p>
                   </div>
+                </div>
+                  
                 </div>
               </div>
             )}
