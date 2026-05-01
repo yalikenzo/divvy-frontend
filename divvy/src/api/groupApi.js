@@ -79,4 +79,20 @@ export const groupApi = {
   async createGroupExpense(payload) {
     return apiClient.post('/group-expenses', payload);
   },
+
+  async getGroupExpenses(groupId) {
+    return apiClient.get(`/group-expenses/${groupId}`);
+  },
+
+  async updateGroupExpense(payload) {
+    return apiClient.put('/group-expenses', payload);
+  },
+
+  async getExpenseSplitBalances(groupId) {
+    return apiClient.get(`/expense-split/${groupId}/balances`);
+  },
+
+  async getExpenseSplitDetails(groupId) {
+    return apiClient.get(`/expense-split/get-all/${groupId}`);
+  },
 };

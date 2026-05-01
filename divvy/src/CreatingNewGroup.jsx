@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as React from "react";
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
 import { useParams, useNavigate } from "react-router-dom";
 import GroupDetailPage from "./GroupDetailPage";
+import { GroupExpenseDetailsPage } from "./components/Groups/GroupExpenseDetailsPage";
 import { cn } from "./utils/cn";
 import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "./components/ui/FormComponents";
 import { CreateGroupModal } from "./components/Groups/CreateGroupModal";
 import { groupApi } from "./api/groupApi";
 import { useAuth } from "./hooks/useAuth";
+import { normalizeGroupExpense } from "./utils/groupExpenseMapper";
 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
@@ -274,7 +276,7 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
 
 export const CreateGroup = () => {
   const { user: authUser } = useAuth();
-  const { groupId } = useParams();
+  const { groupId, expenseId } = useParams();
   const navigate = useNavigate();
 
   const [activePage, setActivePage] = useState("dashboard");
@@ -382,13 +384,69 @@ export const CreateGroup = () => {
     setSelectedGroup(mappedGroup);
   };
 
+  const loadGroupExpenses = useCallback(async (group) => {
+    try {
+      const fetched = await groupApi.getGroupExpenses(group.id);
+      const normalized = (Array.isArray(fetched) ? fetched : []).map((expense) =>
+        normalizeGroupExpense(expense, group, group.members || [])
+      );
+      setAllExpenses((prev) => ({ ...prev, [group.id]: normalized }));
+    } catch (error) {
+      console.error(`Failed to load expenses for group ${group.id}:`, error);
+      setAllExpenses((prev) => ({ ...prev, [group.id]: prev[group.id] || [] }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedGroup?.id) return;
+    if (allExpenses[selectedGroup.id]) return;
+    loadGroupExpenses(selectedGroup);
+  }, [allExpenses, loadGroupExpenses, selectedGroup]);
+
+  const handleOpenExpense = (expense) => {
+    navigate(`/groups/${selectedGroup.id}/expenses/${expense.id}`);
+  };
+
+  const handleExpenseUpdated = (updatedExpense) => {
+    const normalized = normalizeGroupExpense(updatedExpense, selectedGroup, selectedGroup?.members || []);
+    setAllExpenses((prev) => ({
+      ...prev,
+      [selectedGroup.id]: (prev[selectedGroup.id] || []).map((expense) =>
+        expense.id === normalized.id ? { ...expense, ...normalized } : expense
+      ),
+    }));
+  };
+
   if (selectedGroup) {
+    const selectedGroupExpenses = allExpenses[selectedGroup?.id] ?? [];
+    const selectedExpense = expenseId
+      ? selectedGroupExpenses.find((expense) => expense.id === Number(expenseId))
+      : null;
+
+    if (expenseId && selectedExpense) {
+      return (
+        <GroupExpenseDetailsPage
+          group={selectedGroup}
+          groups={groups}
+          user={user}
+          expense={selectedExpense}
+          onBack={() => navigate(`/groups/${selectedGroup.id}`)}
+          onGroupNav={(page) => {
+            setSelectedGroup(null);
+            setActivePage(page);
+            navigate(`/${page}`);
+          }}
+          onExpenseUpdated={handleExpenseUpdated}
+        />
+      );
+    }
+
     return (
       <GroupDetailPage
         group={selectedGroup}
         groups={groups}
         user={user}
-        expenses={allExpenses[selectedGroup?.id] ?? []}
+        expenses={selectedGroupExpenses}
         onExpensesChange={(updated) => setAllExpenses(prev => ({ ...prev, [selectedGroup.id]: updated }))}
         onBack={() => {
           setSelectedGroup(null);
@@ -400,6 +458,7 @@ export const CreateGroup = () => {
           navigate(`/${page}`);
         }}
         onGroupUpdated={handleGroupUpdated}
+        onOpenExpense={handleOpenExpense}
       />
     );
   }
