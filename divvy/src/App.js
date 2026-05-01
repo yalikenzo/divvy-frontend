@@ -50,6 +50,11 @@ function App() {
               <CreateGroup />
             </ProtectedRoute>
           } />
+          <Route path="/groups/:groupId/expenses/:expenseId" element={
+            <ProtectedRoute>
+              <CreateGroup />
+            </ProtectedRoute>
+          } />
           <Route path="/create" element={
             <ProtectedRoute>
               <CreateGroup />
