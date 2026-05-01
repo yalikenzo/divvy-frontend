@@ -82,7 +82,6 @@ function App() {
   );
 }
 
-// BUTTON COMPONENT
 const Button = ({ text, fill_background_color, text_color, border_border, border_border_radius, padding, onClick, className = '' }) => {
   return (
     <button
@@ -94,7 +93,6 @@ const Button = ({ text, fill_background_color, text_color, border_border, border
   );
 };
 
-// SIGN UP MODAL
 const SignUpModal = ({ onClose }) => {
   const navigate = useNavigate();
   const firstFocusRef = useRef(null);
@@ -216,7 +214,6 @@ const SignUpModal = ({ onClose }) => {
   );
 };
 
-// HEADER COMPONENT
 const Header = ({ onGetStarted }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const navItems = [
@@ -289,7 +286,6 @@ const Header = ({ onGetStarted }) => {
   );
 };
 
-// FOOTER COMPONENT
 const Footer = () => {
   return (
     <footer className="w-full bg-[#0d0e10] pt-16 pb-8">
@@ -334,7 +330,6 @@ const Footer = () => {
   );
 };
 
-// FEATURE ITEM
 const FeatureItem = ({ text }) => (
   <div className="flex items-center gap-3">
     <div className="w-8 h-8 bg-emerald-500/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -347,7 +342,6 @@ const FeatureItem = ({ text }) => (
 );
 
 
-// DEMO MODAL
 const DemoModal = ({ onClose }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
@@ -372,7 +366,6 @@ const DemoModal = ({ onClose }) => (
   </div>
 );
 
-// HOMEPAGE (MAIN)
 const Homepage = () => {
   const [email, setEmail] = useState('');
   const [showSignUp, setShowSignUp] = useState(false);

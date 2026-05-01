@@ -3,7 +3,6 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva } from 'class-variance-authority';
 import { cn } from '../../utils/cn';
 
-// Button Component
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
   {
@@ -45,7 +44,6 @@ export const Button = React.forwardRef(
 );
 Button.displayName = 'Button';
 
-// Card Components
 export const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -63,7 +61,6 @@ export const CardContent = React.forwardRef(({ className, ...props }, ref) => (
 ));
 CardContent.displayName = 'CardContent';
 
-// Input Component
 export const Input = React.forwardRef(({ className, type, ...props }, ref) => (
   <input
     type={type}
@@ -77,7 +74,6 @@ export const Input = React.forwardRef(({ className, type, ...props }, ref) => (
 ));
 Input.displayName = 'Input';
 
-// Label Component
 export const Label = ({ className, ...props }) => (
   <label
     className={cn('text-sm font-medium leading-none', className)}
@@ -85,7 +81,6 @@ export const Label = ({ className, ...props }) => (
   />
 );
 
-// Avatar Components
 export const Avatar = ({ className, children }) => (
   <div
     className={cn(

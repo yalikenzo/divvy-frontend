@@ -31,7 +31,6 @@ export const RegisterForm = ({ onClose }) => {
     setFormError(null);
     setSuccessMessage(null);
 
-    // Валидация
     if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
       setFormError('All fields are required');
       return;
@@ -52,7 +51,6 @@ export const RegisterForm = ({ onClose }) => {
 
       setSuccessMessage('Account created! Please check your email to verify your account.');
 
-      // Перенаправляем на страницу верификации через 2 секунды
       setTimeout(() => {
         if (onClose) {
           onClose();

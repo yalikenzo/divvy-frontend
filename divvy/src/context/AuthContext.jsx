@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Инициализируем пользователя при загрузке
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
     setUser(currentUser);

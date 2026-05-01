@@ -2,72 +2,81 @@ import { apiClient } from './apiClient';
 import { CreateGroupPayload, Group, UpdateGroupPayload, InviteToGroupPayload, UserGroup } from '../types/group';
 
 export const groupApi = {
-  /**
-   * Создать новую группу
-   * @param {CreateGroupPayload} payload
-   * @returns {Promise<Group>}
-   */
   async createGroup(payload) {
     const response = await apiClient.post('/groups/create-group', payload);
     return Group.fromResponse(response);
   },
 
-  /**
-   * Получить список всех групп пользователя
-   * @returns {Promise<Group[]>}
-   */
   async getGroups() {
     const response = await apiClient.get('/groups/user-groups');
     return response.map(group => Group.fromResponse(group));
   },
 
-  /**
-   * Получить информацию о конкретной группе
-   * @param {number} groupId
-   * @returns {Promise<Group>}
-   */
   async getGroup(groupId) {
     const response = await apiClient.get(`/groups/${groupId}`);
     return Group.fromResponse(response);
   },
 
-  /**
-   * Обновить группу
-   * @param {number} groupId
-   * @param {UpdateGroupPayload} payload
-   * @returns {Promise<Group>}
-   */
+  async getGroupMembers(groupId) {
+    return apiClient.get(`/user-groups/by-group-id/${groupId}`);
+  },
+
   async updateGroup(groupId, payload) {
     const response = await apiClient.put(`/groups/${groupId}`, payload);
     return Group.fromResponse(response);
   },
 
-  /**
-   * Пригласить пользователя в группу по email
-   * @param {InviteToGroupPayload} payload
-   * @returns {Promise<UserGroup>}
-   */
   async inviteByEmail(payload) {
     const response = await apiClient.post('/user-groups/invite-by-email', payload);
     return UserGroup.fromResponse(response);
   },
 
-  /**
-   * Удалить группу
-   * @param {number} groupId
-   * @returns {Promise<void>}
-   */
   async deleteGroup(groupId) {
     await apiClient.delete(`/groups/${groupId}`);
   },
 
-  /**
-   * Присоединиться к группе по инвайт-ссылке
-   * @param {string} invitationCode
-   * @returns {Promise<Group>}
-   */
   async joinGroup(invitationCode) {
     const response = await apiClient.post(`/groups/join/${invitationCode}`);
     return Group.fromResponse(response);
+  },
+
+  async scanReceipt(groupId, files, expenseId = null) {
+    const baseURL = process.env.BACKEND_DOMAIN || 'http://localhost:8001';
+    const params = new URLSearchParams({ group_id: String(groupId) });
+    if (expenseId !== null && expenseId !== undefined) {
+      params.append('expense_id', String(expenseId));
+    }
+
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${baseURL}/scan-receipt?${params.toString()}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let detail = 'Failed to scan receipt';
+      try {
+        const data = await response.json();
+        detail = data?.detail || detail;
+      } catch {
+      }
+      const error = new Error(detail);
+      error.status = response.status;
+      throw error;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return response.json();
+    }
+    return response.text();
+  },
+
+  async createGroupExpense(payload) {
+    return apiClient.post('/group-expenses', payload);
   },
 };

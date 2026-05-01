@@ -33,13 +33,13 @@ export class User {
     exp,
     type = 'access'
   ) {
-    this.sub = sub; // user id
+    this.sub = sub;
     this.email = email;
     this.first_name = firstName;
     this.last_name = lastName;
     this.is_verified = isVerified;
     this.is_active = isActive;
-    this.exp = exp; // expiration time
+    this.exp = exp;
     this.type = type;
   }
 
