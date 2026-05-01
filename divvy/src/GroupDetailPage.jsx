@@ -7,13 +7,13 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Sidebar } from "./CreatingNewGroup";
 import { GroupSettingsModal } from "./components/Groups/GroupSettingsModal";
+import { groupApi } from "./api/groupApi";
+import { useNavigate, useLocation } from "react-router-dom";
 
-// Utils
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// Button
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
@@ -43,7 +43,6 @@ const Button = React.forwardRef(({ className, variant, size, asChild = false, ..
 });
 Button.displayName = "Button";
 
-// Button
 const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div ref={ref} className={cn("rounded-xl border bg-card text-card-foreground shadow", className)} {...props} />
 ));
@@ -54,7 +53,6 @@ const CardContent = React.forwardRef(({ className, ...props }, ref) => (
 ));
 CardContent.displayName = "CardContent";
 
-// Button
 const Tabs = TabsPrimitive.Root;
 
 const TabsList = React.forwardRef(({ className, ...props }, ref) => (
@@ -78,159 +76,402 @@ const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
 ));
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 
-// Modal
-const Modal = ({ open, onClose, children }) => {
+const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const members = (group?.members?.length ? group.members : (group?.participants ?? []).map((name, idx) => ({ id: idx + 1, fullName: name })))
+    .map((member) => ({
+      id: Number(member.id),
+      name: member.fullName || [member.first_name, member.last_name].filter(Boolean).join(" ").trim() || member.email || "Member",
+    }));
+
+  const [expenseName, setExpenseName] = useState("Expense");
+  const [paidById, setPaidById] = useState(members[0]?.id || 0);
+  const [shareType, setShareType] = useState("EQUAL");
+  const [items, setItems] = useState([]);
+  const [scanFiles, setScanFiles] = useState([]);
+  const [lastScannedSignature, setLastScannedSignature] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [activeMemberIds, setActiveMemberIds] = useState(members.map((m) => m.id).filter((id) => Number.isFinite(id)));
+  const fileInputRef = React.useRef(null);
+
+  const [draftItemName, setDraftItemName] = useState("");
+  const [draftItemPrice, setDraftItemPrice] = useState("");
+  const [draftItemQty, setDraftItemQty] = useState("1");
+  const draftKey = `divvy_add_expense_draft_group_${group?.id}`;
+
+  useEffect(() => {
+    if (open) {
+      setPaidById(members[0]?.id || 0);
+      try {
+        const raw = sessionStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          setExpenseName(draft.expenseName || "Expense");
+          setPaidById(Number(draft.paidById || members[0]?.id || 0));
+          setShareType(draft.shareType === "ITEMIZED" ? "ITEMIZED" : "EQUAL");
+          setItems(Array.isArray(draft.items) ? draft.items : []);
+          if (Array.isArray(draft.activeMemberIds) && draft.activeMemberIds.length > 0) {
+            setActiveMemberIds(draft.activeMemberIds.map(Number).filter((id) => Number.isFinite(id)));
+          } else {
+            setActiveMemberIds(members.map((m) => m.id).filter((id) => Number.isFinite(id)));
+          }
+        }
+      } catch {
+      }
+    }
+  }, [open, draftKey]);
+
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+    const draft = { expenseName, paidById, shareType, items, activeMemberIds };
+    sessionStorage.setItem(draftKey, JSON.stringify(draft));
+  }, [open, expenseName, paidById, shareType, items, activeMemberIds, draftKey]);
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
-        {children}
-      </div>
-    </div>
-  );
-};
+  const normalizedItems = items.map((item) => ({
+    ...item,
+    total_price: Number((item.price * item.quantity).toFixed(2)),
+  }));
+  const totalAmount = normalizedItems.reduce((sum, item) => sum + item.total_price, 0);
+  const expenseMembers = activeMemberIds.filter((id) => Number.isFinite(id));
 
-// Add Expense Modal 
-const CATEGORIES = [
-  { label: "Food & Drink", emoji: "" },
-  { label: "Transport", emoji: "" },
-  { label: "Accommodation", emoji: "" },
-  { label: "Entertainment", emoji: "" },
-  { label: "Shopping", emoji: "" },
-  { label: "Other", emoji: "" },
-];
+  const equalMap = {};
+  if (expenseMembers.length > 0) {
+    const per = totalAmount / expenseMembers.length;
+    expenseMembers.forEach((id) => { equalMap[id] = Number(per.toFixed(2)); });
+  }
 
-const AddExpenseModal = ({ open, onClose, onAdd, members = [], currencySymbol = "$" }) => {
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [paidBy, setPaidBy] = useState(members[0] || "");
-  const [error, setError] = useState("");
-
-  const handleAdd = () => {
-    if (!title.trim()) { setError("Please enter a description."); return; }
-    const num = parseFloat(amount.replace(",", "."));
-    if (!amount || isNaN(num) || num <= 0) { setError("Please enter a valid amount."); return; }
-
-    onAdd({
-      title: title.trim(),
-      amount: num,
-      category: category.label,
-      categoryEmoji: category.emoji,
-      paidBy,
-      date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+  const itemizedMap = {};
+  expenseMembers.forEach((id) => { itemizedMap[id] = 0; });
+  normalizedItems.forEach((item) => {
+    const shares = item.assignedShares || {};
+    const totalShares = Object.values(shares).reduce((s, x) => s + x, 0);
+    if (totalShares <= 0) return;
+    expenseMembers.forEach((id) => {
+      const memberShares = shares[id] || 0;
+      if (memberShares > 0) {
+        itemizedMap[id] = Number((itemizedMap[id] + (item.total_price * memberShares / totalShares)).toFixed(2));
+      }
     });
+  });
 
-    setTitle(""); setAmount(""); setCategory(CATEGORIES[0]); setError("");
-    onClose();
+  const activeShares = shareType === "ITEMIZED" ? itemizedMap : equalMap;
+  const currentFilesSignature = scanFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|");
+  const canRunScan = scanFiles.length > 0 && currentFilesSignature !== lastScannedSignature && !isScanning;
+
+  const handleUnauthorized = () => {
+    const redirectTo = `${location.pathname}${location.search}`;
+    navigate(`/login?redirect=${encodeURIComponent(redirectTo)}`);
+  };
+
+  const toggleMemberParticipation = (memberId) => {
+    const isActive = expenseMembers.includes(memberId);
+
+    if (isActive) {
+      if (expenseMembers.length <= 1) return;
+      const nextMembers = expenseMembers.filter((id) => id !== memberId);
+      setActiveMemberIds(nextMembers);
+      setItems((prev) => prev.map((item) => {
+        const nextShares = { ...(item.assignedShares || {}) };
+        delete nextShares[memberId];
+        return { ...item, assignedShares: nextShares };
+      }));
+      if (paidById === memberId) {
+        setPaidById(nextMembers[0] || 0);
+      }
+      return;
+    }
+
+    const nextMembers = [...expenseMembers, memberId];
+    setActiveMemberIds(nextMembers);
+    setItems((prev) => prev.map((item) => {
+      const nextShares = { ...(item.assignedShares || {}) };
+      if (!Object.prototype.hasOwnProperty.call(nextShares, memberId)) {
+        nextShares[memberId] = 1;
+      }
+      return { ...item, assignedShares: nextShares };
+    }));
+  };
+
+  const handleScanClick = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const handleScan = async () => {
+    if (!scanFiles.length) return;
+    setIsScanning(true);
+    setError("");
+    try {
+      const response = await groupApi.scanReceipt(group.id, scanFiles);
+      const scannedItemsRaw = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.items)
+          ? response.items
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+
+      const scannedItems = scannedItemsRaw.map((item, idx) => {
+        const price = Number(item.price || 0);
+        const quantity = Number(item.quantity || 1);
+        const assignedShares = {};
+        expenseMembers.forEach((id) => { assignedShares[id] = 1; });
+        return {
+          id: Date.now() + idx,
+          name: item.item_name || item.name || `Item ${idx + 1}`,
+          price,
+          quantity,
+          assignedShares,
+        };
+      });
+
+      setItems((prev) => [...prev, ...scannedItems]);
+      setShareType("ITEMIZED");
+      setLastScannedSignature(currentFilesSignature);
+    } catch (scanError) {
+      if (scanError?.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+      setError(scanError.message || "Failed to scan receipt");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const addItem = () => {
+    const name = draftItemName.trim();
+    const price = Number(draftItemPrice);
+    const quantity = Number(draftItemQty || 1);
+    if (!name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
+      setError("Please enter valid item data");
+      return;
+    }
+    const assignedShares = {};
+    if (shareType === "EQUAL") {
+      expenseMembers.forEach((id) => { assignedShares[id] = 1; });
+    } else {
+      expenseMembers.forEach((id) => { assignedShares[id] = 1; });
+    }
+    setItems((prev) => [...prev, { id: Date.now(), name, price, quantity, assignedShares }]);
+    setDraftItemName("");
+    setDraftItemPrice("");
+    setDraftItemQty("1");
+    setError("");
+  };
+
+  const updateShares = (itemId, memberId, diff) => {
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== itemId) return item;
+      const next = { ...item, assignedShares: { ...(item.assignedShares || {}) } };
+      const current = Number(next.assignedShares[memberId] || 0);
+      next.assignedShares[memberId] = Math.max(0, current + diff);
+      return next;
+    }));
+  };
+
+  const submitExpense = async () => {
+    if (!expenseName.trim()) {
+      setError("Expense title is required");
+      return;
+    }
+    if (!expenseMembers.length) {
+      setError("No group members found");
+      return;
+    }
+    if (totalAmount <= 0) {
+      setError("Add at least one item");
+      return;
+    }
+
+    setIsSaving(true);
+    setError("");
+    try {
+      const payload = {
+        payer_id: paidById,
+        group_id: group.id,
+        name: expenseName.trim(),
+        currency: (group?.currency?.split("–")[0] || "USD").trim(),
+        share_type: shareType,
+        total_amount: Number(totalAmount.toFixed(2)),
+        expense_members: expenseMembers,
+        expense_items: normalizedItems.map((item) => ({
+          name: item.name,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          total_price: Number(item.total_price),
+          assigned_user_ids: shareType === "ITEMIZED"
+            ? Object.entries(item.assignedShares || {}).filter(([, shares]) => shares > 0).map(([id]) => Number(id))
+            : expenseMembers,
+        })),
+        exact_share_amount: {},
+        percentage_share_amount: {},
+      };
+
+      await groupApi.createGroupExpense(payload);
+      sessionStorage.removeItem(draftKey);
+      onExpenseCreated({
+        id: Date.now(),
+        title: payload.name,
+        amount: payload.total_amount,
+        category: "Receipt",
+        categoryEmoji: "🧾",
+        paidBy: members.find((m) => m.id === paidById)?.name || "Unknown",
+        date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+      });
+      onClose();
+    } catch (saveError) {
+      if (saveError?.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+      setError(saveError.message || "Failed to create expense");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <h2 className="[font-family:'Outfit',Helvetica] mb-5 text-xl font-bold text-indigo-950">
-        Add Expense
-      </h2>
+    <section className="absolute inset-0 z-[60] bg-white text-[#101828] overflow-y-auto">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        className="hidden"
+        onChange={(e) => setScanFiles(Array.from(e.target.files || []))}
+      />
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={onClose} className="text-sm text-[#6a7282] hover:text-[#101828]">Cancel</button>
+          <h2 className="text-base sm:text-lg font-semibold">Add Expense</h2>
+          <button type="button" onClick={handleScanClick} className="rounded-lg bg-emerald-500 hover:bg-emerald-600 px-3 py-2 text-xs sm:text-sm font-medium">
+            Scan Receipt AI
+          </button>
+        </div>
 
-      <div className="mb-4">
-        <label className="[font-family:'Outfit',Helvetica] mb-1 block text-sm font-medium text-gray-600">Description</label>
-        <input
-          className="[font-family:'Outfit',Helvetica] w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-indigo-950 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-          placeholder="e.g. Dinner at restaurant"
-          value={title}
-          onChange={(e) => { setTitle(e.target.value); setError(""); }}
-        />
-      </div>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input value={expenseName} onChange={(e) => setExpenseName(e.target.value)} className="md:col-span-2 h-11 rounded-lg px-3 text-[#101828] border border-gray-200" placeholder="Expense title" />
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7282]">Payer</label>
+            <select value={paidById} onChange={(e) => setPaidById(Number(e.target.value))} className="h-11 w-full rounded-lg px-3 text-[#101828] border border-gray-200">
+              {members.filter((m) => expenseMembers.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7282]">Split Type</label>
+            <select value={shareType} onChange={(e) => setShareType(e.target.value)} className="h-11 w-full rounded-lg px-3 text-[#101828] border border-gray-200">
+              <option value="EQUAL">Equal</option>
+              <option value="ITEMIZED">Itemized</option>
+            </select>
+          </div>
+        </div>
 
-      <div className="mb-4">
-        <label className="[font-family:'Outfit',Helvetica] mb-1 block text-sm font-medium text-gray-600">
-          Amount ({currencySymbol})
-        </label>
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          className="[font-family:'Outfit',Helvetica] w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-indigo-950 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-          placeholder="0.00"
-          value={amount}
-          onChange={(e) => { setAmount(e.target.value); setError(""); }}
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-        />
-      </div>
-
-      <div className="mb-4">
-        <label className="[font-family:'Outfit',Helvetica] mb-2 block text-sm font-medium text-gray-600">Category</label>
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.label}
-              type="button"
-              onClick={() => setCategory(c)}
-              className={`[font-family:'Outfit',Helvetica] flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                category.label === c.label
-                  ? "bg-indigo-100 text-indigo-700 ring-2 ring-indigo-400"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {c.emoji} {c.label}
+        {scanFiles.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-[#6a7282]">{scanFiles.length} file(s) selected</span>
+            <button type="button" onClick={handleScan} disabled={!canRunScan} className="rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 px-5 py-2.5 text-sm font-semibold text-white">
+              {isScanning ? "Scanning..." : "Run scan"}
             </button>
+          </div>
+        )}
+
+        <div className="mt-5 space-y-3">
+          {normalizedItems.map((item) => (
+            <div key={item.id} className="rounded-xl bg-white text-[#101828] p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <input
+                    value={item.name}
+                    onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, name: e.target.value } : x))}
+                    className="h-11 rounded-lg px-3 text-[#101828] border border-gray-200 w-full"
+                  />
+                  <p className="text-sm text-[#6a7282]">{item.quantity} x {item.price.toFixed(2)} = {item.total_price.toFixed(2)}</p>
+                </div>
+                <button type="button" onClick={() => setItems((prev) => prev.filter((x) => x.id !== item.id))} className="text-red-500">✕</button>
+              </div>
+              {shareType === "ITEMIZED" && (
+                <div className="mt-3 space-y-2">
+                  {members.filter((member) => expenseMembers.includes(member.id)).map((member) => {
+                    const shares = item.assignedShares?.[member.id] || 0;
+                    const isPayingForItem = shares > 0;
+                    return (
+                    <div
+                      key={`${item.id}-${member.id}`}
+                      className={`flex items-center justify-between rounded-lg px-3 py-2 border ${
+                        isPayingForItem ? "bg-emerald-50 border-emerald-200" : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <span className="text-sm">{member.name}</span>
+                      <div className="flex items-center gap-2">
+                        <button type="button" className="w-7 h-7 rounded border" onClick={() => updateShares(item.id, member.id, -1)}>-</button>
+                        <span className={`min-w-6 text-center ${isPayingForItem ? "text-emerald-600 font-semibold" : "text-gray-500"}`}>{shares}</span>
+                        <button type="button" className="w-7 h-7 rounded border" onClick={() => updateShares(item.id, member.id, 1)}>+</button>
+                      </div>
+                    </div>
+                  )})}
+                </div>
+              )}
+            </div>
           ))}
         </div>
-      </div>
 
-      <div className="mb-5">
-        <label className="[font-family:'Outfit',Helvetica] mb-1 block text-sm font-medium text-gray-600">Paid by</label>
-        {members.length > 0 ? (
-          <select
-            className="[font-family:'Outfit',Helvetica] w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-indigo-950 outline-none focus:border-indigo-400"
-            value={paidBy}
-            onChange={(e) => setPaidBy(e.target.value)}
-          >
-            {members.map((m) => (
-              <option key={m} value={m}>{m}</option>
+        <div className="mt-5 rounded-xl bg-white p-4 text-[#101828]">
+          <p className="text-sm font-semibold mb-3">Add New Item</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input value={draftItemName} onChange={(e) => setDraftItemName(e.target.value)} placeholder="Description" className="h-10 rounded-md border px-3" />
+            <input value={draftItemPrice} onChange={(e) => setDraftItemPrice(e.target.value)} placeholder="Price" type="number" className="h-10 rounded-md border px-3" />
+            <input value={draftItemQty} onChange={(e) => setDraftItemQty(e.target.value)} placeholder="Qty" type="number" className="h-10 rounded-md border px-3" />
+          </div>
+          <button type="button" onClick={addItem} className="mt-3 w-full h-10 rounded-md bg-gray-100 hover:bg-gray-200 text-sm font-medium">+ Add Item</button>
+        </div>
+
+        <div className="mt-5 rounded-xl bg-white p-4 text-[#101828]">
+          <p className="text-sm font-semibold mb-3">Split Summary</p>
+          <div className="space-y-2">
+            {members.map((member) => (
+              <div key={`summary-${member.id}`} className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleMemberParticipation(member.id)}
+                    className={`h-5 w-5 rounded-full border flex items-center justify-center text-[11px] ${
+                      expenseMembers.includes(member.id)
+                        ? "bg-emerald-500 border-emerald-500 text-white"
+                        : "bg-white border-gray-300 text-transparent"
+                    }`}
+                    aria-label={`${expenseMembers.includes(member.id) ? "Disable" : "Enable"} ${member.name} in expense`}
+                    disabled={expenseMembers.length <= 1 && expenseMembers.includes(member.id)}
+                  >
+                    ✓
+                  </button>
+                  <span className={`text-sm ${expenseMembers.includes(member.id) ? "text-[#101828]" : "text-gray-400"}`}>{member.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-semibold ${expenseMembers.includes(member.id) ? "text-emerald-600" : "text-gray-400"}`}>
+                    {(expenseMembers.includes(member.id) ? (activeShares[member.id] || 0) : 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
             ))}
-          </select>
-        ) : (
-          <input
-            className="[font-family:'Outfit',Helvetica] w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-indigo-950 outline-none focus:border-indigo-400"
-            value={paidBy}
-            onChange={(e) => setPaidBy(e.target.value)}
-            placeholder="Who paid?"
-          />
-        )}
-      </div>
+          </div>
+        </div>
 
-      {error && <p className="mb-3 text-xs text-red-500">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          className="[font-family:'Outfit',Helvetica] flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-          onClick={onClose}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="[font-family:'Outfit',Helvetica] flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm text-white hover:bg-emerald-600 transition-colors"
-          onClick={handleAdd}
-        >
-          Add Expense
+        <button type="button" onClick={submitExpense} disabled={isSaving} className="mt-5 mb-3 w-full h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-sm font-semibold">
+          {isSaving ? "Saving..." : `Add Expense - ${totalAmount.toFixed(2)}`}
         </button>
       </div>
-    </Modal>
+    </section>
   );
 };
 
-// Tab content
 const ExpensesContent = ({ group, expenses, onAddExpense, onDeleteExpense }) => {
   const currencySymbol = group?.currency?.includes("EUR") ? "€"
     : group?.currency?.includes("GBP") ? "£"
@@ -527,7 +768,6 @@ const ReceiptsContent = () => {
   );
 };
 
-// Expense Overview 
 const overviewTabs = [
   { value: "expenses", label: "Expenses" },
   { value: "balances", label: "Balances" },
@@ -552,12 +792,6 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
   const [activeTab, setActiveTab] = useState("expenses");
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-
-  const currencyCode = group?.currency?.split("–")[0]?.trim() ?? "USD";
-  const currencySymbol = group?.currency?.includes("EUR") ? "€"
-    : group?.currency?.includes("GBP") ? "£"
-    : group?.currency?.includes("JPY") ? "¥"
-    : "$";
 
   const addExpense = (newExpense) => {
   onExpensesChange([...expenses, { ...newExpense, id: Date.now() }]);
@@ -638,19 +872,27 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
           <p className="text-sm text-gray-400">
             {group?.participants?.length ?? 0} member{(group?.participants?.length ?? 0) !== 1 ? "s" : ""}
           </p>
-          <div className="flex items-center gap-1 mt-1">
-            {group?.participants?.slice(0, 6).map((name, i) => (
-              <div
-                key={i}
-                title={name}
-                className="w-7 h-7 rounded-full bg-[linear-gradient(135deg,rgba(79,70,229,1)_0%,rgba(16,185,129,1)_100%)] flex items-center justify-center text-white text-xs font-bold border-2 border-white -ml-1 first:ml-0"
-              >
-                {name[0]}
-              </div>
-            ))}
-            {(group?.participants?.length ?? 0) > 6 && (
-              <span className="text-xs text-gray-400 ml-1">+{group.participants.length - 6}</span>
-            )}
+          <div className="mt-2 w-full overflow-hidden rounded-xl border border-gray-100 bg-white">
+            {(group?.members?.length ? group.members : (group?.participants ?? []).map((name, idx) => ({ id: idx, fullName: name }))).map((member, idx, arr) => {
+              const displayName =
+                member.fullName ||
+                [member.first_name, member.last_name].filter(Boolean).join(" ").trim() ||
+                member.email ||
+                "Member";
+              const initial = displayName.charAt(0).toUpperCase() || "M";
+
+              return (
+                <div
+                  key={member.id ?? `${displayName}-${idx}`}
+                  className={`flex items-center gap-3 px-4 py-3 ${idx !== arr.length - 1 ? "border-b border-gray-100" : ""}`}
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">
+                    {initial}
+                  </div>
+                  <p className="truncate text-sm font-medium text-[#101828]">{displayName}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -673,12 +915,11 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
         {renderContent()}
       </div>
 
-      <AddExpenseModal
+      <FullScreenExpenseEditor
         open={showAddExpense}
         onClose={() => setShowAddExpense(false)}
-        onAdd={addExpense}
-        members={group?.participants ?? []}
-        currencySymbol={currencySymbol}
+        group={group}
+        onExpenseCreated={addExpense}
       />
 
       {showSettings && (
@@ -695,7 +936,6 @@ const ExpenseOverviewSection = ({ group, expenses, onExpensesChange, onBack, onN
   );
 };
 
-// Main Page
 const GroupDetailPage = ({ group, groups = [], user, expenses, onExpensesChange, onBack, onNavChange, onGroupUpdated }) => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">

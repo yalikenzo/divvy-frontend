@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import logo from '../../divvylogo.svg';
 
 export const LoginForm = ({ onClose }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, startGoogleLogin, isLoading, error } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +14,8 @@ export const LoginForm = ({ onClose }) => {
     password: '',
   });
   const [formError, setFormError] = useState(null);
+  const redirectParam = new URLSearchParams(location.search).get('redirect');
+  const redirectTo = redirectParam || sessionStorage.getItem('post_login_redirect') || '/dashboard';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,7 +30,6 @@ export const LoginForm = ({ onClose }) => {
     e.preventDefault();
     setFormError(null);
 
-    // Валидация
     if (!formData.email || !formData.password) {
       setFormError('Email and password are required');
       return;
@@ -35,11 +37,12 @@ export const LoginForm = ({ onClose }) => {
 
     try {
       await login(formData.email, formData.password);
+      sessionStorage.removeItem('post_login_redirect');
 
       if (onClose) {
         onClose();
       }
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (err) {
       setFormError(err.data?.detail || err.message || 'Login failed');
     }
@@ -72,7 +75,10 @@ export const LoginForm = ({ onClose }) => {
       <div className="flex flex-col gap-3 w-full mb-5">
         <button
           type="button"
-          onClick={startGoogleLogin}
+          onClick={() => {
+            sessionStorage.setItem('post_login_redirect', redirectTo);
+            startGoogleLogin();
+          }}
           disabled={isLoading}
           className="flex items-center justify-center gap-3 w-full h-11 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors font-[Outfit] font-medium text-[#364153] text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
