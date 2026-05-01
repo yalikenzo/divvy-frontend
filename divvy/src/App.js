@@ -13,7 +13,9 @@ import { CreateGroup } from './CreatingNewGroup';
 import { AuthProvider } from './context/AuthContext';
 import { RegisterForm } from './components/Auth/RegisterForm';
 import { LoginForm } from './components/Auth/LoginForm';
+import { GoogleCallback } from './components/Auth/GoogleCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { authApi } from './api/authApi';
 
 function App() {
   return (
@@ -31,6 +33,8 @@ function App() {
               <LoginForm />
             </div>
           } />
+          <Route path="/auth/google/callback" element={<GoogleCallback />} />
+          <Route path="/google/callback" element={<GoogleCallback />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <CreateGroup />
@@ -118,6 +122,10 @@ const SignUpModal = ({ onClose }) => {
     navigate('/login');
   };
 
+  const handleGoogleLoginClick = () => {
+    window.location.href = authApi.getGoogleLoginUrl();
+  };
+
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center"
@@ -163,7 +171,10 @@ const SignUpModal = ({ onClose }) => {
 
           {/* Social buttons (будут реализованы позже) */}
           <div className="flex flex-col gap-3 w-full mb-5">
-            <button className="flex items-center justify-center gap-3 w-full h-11 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors font-[Outfit] font-medium text-[#364153] text-sm">
+            <button
+              onClick={handleGoogleLoginClick}
+              className="flex items-center justify-center gap-3 w-full h-11 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors font-[Outfit] font-medium text-[#364153] text-sm"
+            >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>

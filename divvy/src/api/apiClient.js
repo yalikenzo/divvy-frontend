@@ -1,4 +1,4 @@
-const BACKEND_DOMAIN = process.env.REACT_APP_BACKEND_DOMAIN || 'http://localhost:8001';
+const BACKEND_DOMAIN = process.env.BACKEND_DOMAIN || 'http://localhost:8001';
 
 class ApiClient {
   constructor(baseURL = BACKEND_DOMAIN) {
