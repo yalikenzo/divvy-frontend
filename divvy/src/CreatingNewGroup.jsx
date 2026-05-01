@@ -9,7 +9,6 @@ import { CreateGroupModal } from "./components/Groups/CreateGroupModal";
 import { groupApi } from "./api/groupApi";
 import { useAuth } from "./hooks/useAuth";
 
-// Separator 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
     <SeparatorPrimitive.Root
@@ -28,7 +27,6 @@ const Separator = React.forwardRef(
 Separator.displayName = SeparatorPrimitive.Root.displayName;
 
 
-//  Shared Sidebar 
 export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
   <aside className="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 h-full">
     <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
@@ -69,7 +67,6 @@ export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
   </aside>
 );
 
-// Empty State
 const EmptyState = ({ icon, title, subtitle, action }) => (
   <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
     <div className="text-5xl">{icon}</div>
@@ -79,7 +76,6 @@ const EmptyState = ({ icon, title, subtitle, action }) => (
   </div>
 );
 
-// Settings helpers
 const Section = ({ title, description, children }) => (
   <Card className="bg-white rounded-[14px] border border-gray-100 shadow-[0px_1px_2px_-1px_#0000001a,0px_1px_3px_#0000001a] w-full">
     <CardContent className="p-0">
@@ -175,9 +171,19 @@ const SettingsPage = ({
   return (
     <main className="flex flex-col flex-1 h-full gap-6 pt-8 pb-8 px-8 overflow-auto">
       <header className="flex items-center justify-between w-full h-14 flex-shrink-0">
-        <div className="flex flex-col gap-1">
-          <h1 className="[font-family:'Outfit',Helvetica] font-bold text-indigo-950 text-2xl leading-8">Settings</h1>
-          <p className="[font-family:'Outfit',Helvetica] font-normal text-[#6a7282] text-sm leading-5">Manage your account and preferences</p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenMobileNav}
+            className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-[#4a5565]"
+            aria-label="Open navigation menu"
+          >
+            ☰
+          </button>
+          <div className="flex flex-col gap-1">
+            <h1 className="[font-family:'Outfit',Helvetica] font-bold text-indigo-950 text-2xl leading-8">Settings</h1>
+            <p className="[font-family:'Outfit',Helvetica] font-normal text-[#6a7282] text-sm leading-5">Manage your account and preferences</p>
+          </div>
         </div>
       </header>
       <div className="flex flex-col gap-5 w-full max-w-2xl">
@@ -306,7 +312,6 @@ const SettingsPage = ({
 };
 
 
-// Main App
 export const CreateGroup = () => {
   const { user: authUser, updateProfile, deleteAccount } = useAuth();
   const { groupId } = useParams();
@@ -318,6 +323,7 @@ export const CreateGroup = () => {
   const [allExpenses, setAllExpenses] = useState({});
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [user, setUser] = useState({
     firstName: authUser?.first_name || "",
@@ -345,7 +351,6 @@ export const CreateGroup = () => {
     loadGroups();
   }, []);
 
-  // Открываем группу по URL параметру
   useEffect(() => {
     if (groupId && groups.length > 0) {
       const group = groups.find(g => g.id === parseInt(groupId));
@@ -360,15 +365,44 @@ export const CreateGroup = () => {
     setIsLoadingGroups(true);
     try {
       const fetchedGroups = await groupApi.getGroups();
-      // Преобразуем в формат, который использует компонент
-      const mappedGroups = fetchedGroups.map(group => ({
-        id: group.id,
-        title: group.name,
-        currency: group.currency,
-        participants: [user.name], // TODO: добавить реальных участников когда API будет готов
-        invitation_link: group.invitation_link,
-      }));
-      setGroups(mappedGroups);
+      const groupsWithMembers = await Promise.all(
+        fetchedGroups.map(async (group) => {
+          try {
+            const members = await groupApi.getGroupMembers(group.id);
+            const normalizedMembers = (Array.isArray(members) ? members : []).map((member) => {
+              const fullName = [member?.first_name, member?.last_name].filter(Boolean).join(" ").trim();
+              return {
+                id: member?.id,
+                first_name: member?.first_name || "",
+                last_name: member?.last_name || "",
+                email: member?.email || "",
+                fullName: fullName || member?.email || "Member",
+              };
+            });
+
+            return {
+              id: group.id,
+              title: group.name,
+              currency: group.currency,
+              participants: normalizedMembers.map((member) => member.fullName),
+              members: normalizedMembers,
+              invitation_link: group.invitation_link,
+            };
+          } catch (memberError) {
+            console.error(`Failed to load members for group ${group.id}:`, memberError);
+            return {
+              id: group.id,
+              title: group.name,
+              currency: group.currency,
+              participants: [user.name],
+              members: [{ id: "me", first_name: user.name, last_name: "", email: user.email || "", fullName: user.name }],
+              invitation_link: group.invitation_link,
+            };
+          }
+        })
+      );
+
+      setGroups(groupsWithMembers);
     } catch (error) {
       console.error('Failed to load groups:', error);
     } finally {
@@ -377,19 +411,18 @@ export const CreateGroup = () => {
   };
 
   const handleCreateGroup = async (newGroup) => {
-    // Преобразуем Group объект в формат компонента
     const mappedGroup = {
       id: newGroup.id,
       title: newGroup.name,
       currency: newGroup.currency,
       participants: [user.name],
+      members: [{ id: "me", first_name: user.name, last_name: "", email: user.email || "", fullName: user.name }],
       invitation_link: newGroup.invitation_link,
     };
     setGroups((g) => [mappedGroup, ...g]);
     setActivePage("groups");
   };
 
-  // Обработчик обновления группы
   const handleGroupUpdated = (updatedGroup) => {
     const mappedGroup = {
       id: updatedGroup.id,
@@ -397,6 +430,7 @@ export const CreateGroup = () => {
       name: updatedGroup.name,
       currency: updatedGroup.currency,
       participants: selectedGroup?.participants || [user.name],
+      members: selectedGroup?.members || [{ id: "me", first_name: user.name, last_name: "", email: user.email || "", fullName: user.name }],
       invitation_link: updatedGroup.invitation_link,
     };
 
@@ -455,7 +489,6 @@ export const CreateGroup = () => {
       />
     );
   }
-  // Compute dashboard stats across all groups
   const allExpensesList = Object.entries(allExpenses).flatMap(([groupId, exps]) => {
     const group = groups.find(g => g.id === Number(groupId));
     return exps.map(e => ({ ...e, group }));
@@ -488,6 +521,60 @@ export const CreateGroup = () => {
         <Sidebar activeNav={activePage} onNavChange={setActivePage} groupCount={groups.length} user={user} />
       </div>
 
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <aside className="relative z-10 h-full w-[280px] max-w-[85vw] bg-white border-r border-gray-100 flex flex-col">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+              <span className="font-bold text-[#101828] text-lg">Divvy</span>
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 text-[#6a7282]"
+                onClick={() => setMobileNavOpen(false)}
+                aria-label="Close navigation menu"
+              >
+                ✕
+              </button>
+            </div>
+            <nav className="flex flex-col gap-1 px-3 py-4">
+              {[
+                { id: "dashboard", label: "Dashboard" },
+                { id: "groups", label: "Groups" },
+                { id: "settings", label: "Settings" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setActivePage(item.id);
+                    setMobileNavOpen(false);
+                  }}
+                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium ${
+                    activePage === item.id ? "bg-indigo-50 text-indigo-600" : "text-[#4a5565] hover:bg-gray-50"
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {item.id === "groups" && groups.length > 0 && (
+                    <span className="text-xs font-semibold bg-indigo-100 text-indigo-600 rounded-full px-2 py-0.5 leading-none">
+                      {groups.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+            <div className="mt-auto px-4 py-4 border-t border-gray-100">
+              <p className="text-sm font-semibold text-[#101828] truncate">{user?.name}</p>
+              <p className="text-xs text-[#99a1af] truncate">{user?.email}</p>
+            </div>
+          </aside>
+        </div>
+      )}
+
       <main className="flex-1 overflow-y-auto flex flex-col">
         {activePage === "settings" && (
           <SettingsPage
@@ -504,7 +591,17 @@ export const CreateGroup = () => {
           <>
             <div className="bg-white border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-10">
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-[#101828] capitalize">{activePage}</h1>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileNavOpen(true)}
+                    className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-[#4a5565]"
+                    aria-label="Open navigation menu"
+                  >
+                    ☰
+                  </button>
+                  <h1 className="text-lg sm:text-xl font-bold text-[#101828] capitalize">{activePage}</h1>
+                </div>
                 <p className="text-xs sm:text-sm text-[#99a1af]">Welcome back, {user?.name}</p>
               </div>
               {groups.length > 0 && (
@@ -590,7 +687,6 @@ export const CreateGroup = () => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {groups.map((group) => (
-                      // ← clicking a card opens GroupDetailPage
                       <div
                         key={group.id}
                         onClick={() => {
@@ -605,15 +701,7 @@ export const CreateGroup = () => {
                         </div>
                         <div>
                           <p className="font-semibold text-[#101828] text-base">{group.title}</p>
-                          <p className="text-xs text-[#99a1af] mt-1">{group.participants.length} member{group.participants.length !== 1 ? "s" : ""}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {group.participants.slice(0, 4).map((name, i) => (
-                            <div key={i} className="w-7 h-7 rounded-full bg-[linear-gradient(135deg,rgba(79,70,229,1)_0%,rgba(16,185,129,1)_100%)] flex items-center justify-center text-white text-xs font-bold border-2 border-white -ml-1 first:ml-0" title={name}>
-                              {name[0]}
-                            </div>
-                          ))}
-                          {group.participants.length > 4 && <span className="text-xs text-[#99a1af] ml-1">+{group.participants.length - 4}</span>}
+                          <p className="text-sm text-[#6a7282] mt-1">{group.participants.length} member{group.participants.length !== 1 ? "s" : ""}</p>
                         </div>
                         <div className="flex items-center justify-between border-t border-gray-50 pt-3">
                           <span className="text-sm font-bold text-[#101828]">$0.00</span>

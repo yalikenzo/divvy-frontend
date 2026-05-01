@@ -5,9 +5,6 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  /**
-   * Выполняет HTTP запрос
-   */
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -19,7 +16,6 @@ class ApiClient {
       ...options,
     };
 
-    // Добавляем access токен если есть
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -28,13 +24,11 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
 
-      // Парсим ответ
       let data = null;
       if (response.headers.get('content-type')?.includes('application/json')) {
         data = await response.json();
       }
 
-      // Обработаем ошибки
       if (!response.ok) {
         const error = new Error(data?.detail || 'API error');
         error.status = response.status;
@@ -49,16 +43,10 @@ class ApiClient {
     }
   }
 
-  /**
-   * GET запрос
-   */
   get(endpoint, options = {}) {
     return this.request(endpoint, { ...options, method: 'GET' });
   }
 
-  /**
-   * POST запрос
-   */
   post(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       ...options,
@@ -67,9 +55,6 @@ class ApiClient {
     });
   }
 
-  /**
-   * PUT запрос
-   */
   put(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       ...options,
@@ -78,16 +63,10 @@ class ApiClient {
     });
   }
 
-  /**
-   * DELETE запрос
-   */
   delete(endpoint, options = {}) {
     return this.request(endpoint, { ...options, method: 'DELETE' });
   }
 
-  /**
-   * PATCH запрос
-   */
   patch(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       ...options,

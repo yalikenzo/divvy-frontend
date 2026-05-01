@@ -10,6 +10,8 @@ export const GoogleCallback = () => {
 
   useEffect(() => {
     const code = searchParams.get('code');
+    const redirectParam = searchParams.get('redirect');
+    const redirectTo = redirectParam || sessionStorage.getItem('post_login_redirect') || '/dashboard';
 
     if (!code) {
       setError('Google did not return an authorization code');
@@ -22,7 +24,8 @@ export const GoogleCallback = () => {
       try {
         await completeGoogleLogin(code);
         if (isMounted) {
-          navigate('/dashboard', { replace: true });
+          sessionStorage.removeItem('post_login_redirect');
+          navigate(redirectTo, { replace: true });
         }
       } catch (err) {
         if (isMounted) {
