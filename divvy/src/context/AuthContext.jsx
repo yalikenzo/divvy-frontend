@@ -1,5 +1,7 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { authApi } from '../api/authApi';
+import { userApi, UpdateUserPayload } from '../api/userApi';
+import { User } from '../types/auth';
 import { RegisterPayload, LoginPayload } from '../types/auth';
 
 export const AuthContext = createContext(null);
@@ -87,6 +89,57 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const updateProfile = useCallback(async (firstName, lastName) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const payload = new UpdateUserPayload(firstName, lastName);
+      const response = await userApi.updateCurrentUser(payload);
+
+      const currentUser = authApi.getCurrentUser();
+      if (currentUser) {
+        const mergedUser = new User(
+          currentUser.sub,
+          currentUser.email,
+          response?.first_name ?? firstName,
+          response?.last_name ?? lastName,
+          currentUser.is_verified,
+          currentUser.is_active,
+          currentUser.exp,
+          currentUser.type
+        );
+        localStorage.setItem('user', JSON.stringify(mergedUser));
+        setUser(mergedUser);
+      }
+
+      return response;
+    } catch (err) {
+      const errorMessage = err.data?.detail || err.message || 'Profile update failed';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await userApi.deleteCurrentUser();
+      authApi.logout();
+      setUser(null);
+    } catch (err) {
+      const errorMessage = err.data?.detail || err.message || 'Account deletion failed';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const value = {
     user,
     isLoading,
@@ -96,6 +149,8 @@ export const AuthProvider = ({ children }) => {
     login,
     startGoogleLogin,
     completeGoogleLogin,
+    updateProfile,
+    deleteAccount,
     logout,
     isAuthenticated: user !== null && !user.isTokenExpired?.(),
     isVerified: user?.is_verified === true,

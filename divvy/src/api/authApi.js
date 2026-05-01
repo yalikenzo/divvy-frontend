@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 import { User } from '../types/auth';
 
-const BACKEND_DOMAIN = process.env.BACKEND_DOMAIN || 'http://localhost:8001';
+const BACKEND_DOMAIN = process.env.REACT_APP_BACKEND_DOMAIN;
 
 function parseJWT(token) {
   try {
