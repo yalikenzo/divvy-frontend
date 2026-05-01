@@ -70,14 +70,4 @@ export const groupApi = {
     const response = await apiClient.post(`/groups/join/${invitationCode}`);
     return Group.fromResponse(response);
   },
-
-  /**
-   * Пригласить пользователя в группу по email
-   * @param {InviteUserPayload} payload
-   * @returns {Promise<UserGroupRead>}
-   */
-  async inviteByEmail(payload) {
-    const response = await apiClient.post('/user-groups/invite-by-email', payload);
-    return response; // UserGroupRead
-  },
 };

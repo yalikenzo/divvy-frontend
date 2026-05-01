@@ -65,6 +65,28 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   }, []);
 
+  const startGoogleLogin = useCallback(() => {
+    window.location.href = authApi.getGoogleLoginUrl();
+  }, []);
+
+  const completeGoogleLogin = useCallback(async (code) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await authApi.loginWithGoogleCode(code);
+      const currentUser = authApi.getCurrentUser();
+      setUser(currentUser);
+      return response;
+    } catch (err) {
+      const errorMessage = err.data?.detail || err.message || 'Google login failed';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const value = {
     user,
     isLoading,
@@ -72,6 +94,8 @@ export const AuthProvider = ({ children }) => {
     isInitialized,
     register,
     login,
+    startGoogleLogin,
+    completeGoogleLogin,
     logout,
     isAuthenticated: user !== null && !user.isTokenExpired?.(),
     isVerified: user?.is_verified === true,
