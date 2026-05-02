@@ -2,6 +2,11 @@
 
 > AI-powered bill splitting app that keeps friendships intact.
 
+## Team members
+ID: 230103074 Yerdaulet Amanbay \
+ID: 230103277 Dias Izdibayev \
+ID: 230103107 Alikhan Bissenov \
+ID: 230103059 Nursanat Mussa
 ---
 
 ## Problem Statement
