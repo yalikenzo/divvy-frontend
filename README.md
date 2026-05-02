@@ -17,11 +17,10 @@ Splitting bills among friends is awkward, error-prone, and often leads to misund
 
 ## Features
 
--  **AI Receipt Scanning** — Snap a photo of any receipt and let Computer Vision extract all items, prices, taxes, and tips automatically
+-  **AI Receipt Scanning** — Snap a photo of any receipt and let Computer Vision extract all items, prices, names, quantities
 -  **Fair Bill Splitting** — Split by individual items, equal shares, or custom amounts
 -  **Group Orders** — Handle complex orders across large friend groups with ease
 -  **Debt Tracking** — Always know who owes what at a glance
--  **Community Newsletter** — Stay updated with tips and new features
 -  **User Authentication** — Sign up with email, Google, or Apple
 
 ---
@@ -50,17 +49,12 @@ cd divvy-frontend/divvy
 npm install
 ```
 
-3. **Install Tailwind CSS**
-```bash
-npm install -D tailwindcss@3.4.1 postcss autoprefixer
-```
-
-4. **Start the development server**
+3. **Start the development server**
 ```bash
 npm start
 ```
 
-5. **Open in browser**
+4. **Open in browser**
 ```
 http://localhost:3000
 ```
@@ -92,11 +86,12 @@ divvy/
 │   ├── App.js          # Main component (all components in one file)
 │   ├── index.js        # React entry point
 │   ├── index.css       # Tailwind imports
-│   ├── img1.jpg        # Hero image assets
-│   ├── img2.png
-│   ├── img3.png
-│   ├── img5.jpg
-│   └── dollar.svg      # Decorative vector
+|   └── imgs
+│     ├── img1.jpg        # Hero image assets
+│     ├── img2.png
+│     ├── img3.png
+│     ├── img5.jpg
+│     └── dollar.svg      # Decorative vector
 ├── tailwind.config.js
 ├── postcss.config.js
 └── package.json
