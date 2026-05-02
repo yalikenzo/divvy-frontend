@@ -10,6 +10,7 @@ import { CreateGroupModal } from "./components/Groups/CreateGroupModal";
 import { groupApi } from "./api/groupApi";
 import { useAuth } from "./hooks/useAuth";
 import { normalizeGroupExpense } from "./utils/groupExpenseMapper";
+import { VirtualCardPage } from "./components/VirtualCard/VirtualCardPage";
 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
@@ -38,6 +39,7 @@ export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
       {[
         { id: "dashboard", label: "Dashboard", icon: "⊞" },
         { id: "groups", label: "Groups", icon: "◎" },
+        { id: "virtual-card", label: "Virtual Card", icon: "💳" },
         { id: "settings", label: "Settings", icon: "⚙" },
       ].map((item) => (
         <button
@@ -288,6 +290,7 @@ export const CreateGroup = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [user, setUser] = useState({
+    id: authUser.sub,
     name: authUser?.getFullName() || "User",
     email: authUser?.email || "",
     initials: authUser?.first_name?.[0] + (authUser?.last_name?.[0] || "") || "U",
@@ -487,6 +490,19 @@ export const CreateGroup = () => {
 
   const currencySymbol = "$";
 
+  if (activePage === "virtual-card") {
+    return (
+        <VirtualCardPage
+            user={user}
+            groups={groups}
+            onNavChange={(page) => {
+              setActivePage(page);
+              navigate(`/${page}`);
+            }}
+        />
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
       {/* Sidebar скрыт на мобильных, показывается на lg+ */}
@@ -634,7 +650,7 @@ export const CreateGroup = () => {
               <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-[#101828]">My Groups</h2>
+                    <h2 className="text-xl font-bold text-[#101828]">My groups</h2>
                     <p className="text-sm text-[#99a1af] mt-0.5">{groups.length} group{groups.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
@@ -668,8 +684,6 @@ export const CreateGroup = () => {
                           <p className="text-sm text-[#6a7282] mt-1">{group.participants.length} member{group.participants.length !== 1 ? "s" : ""}</p>
                         </div>
                         <div className="flex items-center justify-between border-t border-gray-50 pt-3">
-                          <span className="text-sm font-bold text-[#101828]">$0.00</span>
-                          <span className="text-xs text-emerald-500 font-medium">All settled up</span>
                         </div>
                       </div>
                     ))}
