@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import logo from '../../divvylogo.svg';
+import logo from '../../imgs/divvylogo.svg';
 
 export const LoginForm = ({ onClose }) => {
   const navigate = useNavigate();
