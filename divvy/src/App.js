@@ -7,9 +7,9 @@ import img5 from './imgs/img5.jpg';
 import logo from './imgs/divvylogo.svg';
 import { CreateGroup } from './components/Groups/CreatingNewGroup';
 import { AuthProvider } from './context/AuthContext';
-import { RegisterForm } from './components/auth/RegisterForm';
-import { LoginForm } from './components/auth/LoginForm';
-import { GoogleCallback } from './components/auth/GoogleCallback';
+import { RegisterForm } from './components/Auth/RegisterForm';
+import { LoginForm } from './components/Auth/LoginForm';
+import { GoogleCallback } from './components/Auth/GoogleCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authApi } from './api/authApi';
 
