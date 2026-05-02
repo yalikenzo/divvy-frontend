@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 import { User } from '../types/auth';
 
-const BACKEND_DOMAIN = process.env.BACKEND_DOMAIN || 'http://localhost:8001';
+const BACKEND_DOMAIN = process.env.REACT_APP_BACKEND_DOMAIN;
 
 function parseJWT(token) {
   try {
@@ -21,10 +21,14 @@ function parseJWT(token) {
 }
 
 function saveTokenPair(tokenPair) {
-  if (!tokenPair?.access_token || !tokenPair?.refresh_token) return;
+  if (!tokenPair?.access_token) return;
 
   localStorage.setItem('access_token', tokenPair.access_token);
-  localStorage.setItem('refresh_token', tokenPair.refresh_token);
+  if (tokenPair.refresh_token) {
+    localStorage.setItem('refresh_token', tokenPair.refresh_token);
+  } else {
+    localStorage.removeItem('refresh_token');
+  }
 
   const userPayload = parseJWT(tokenPair.access_token);
   if (!userPayload) return;

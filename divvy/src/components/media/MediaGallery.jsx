@@ -2,20 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { mediaApi } from "../../api/mediaApi";
 
 const CATEGORY_PHOTO = "PHOTO";
-const CATEGORY_RECEIPT = "RECEIPT";
-
-const getCurrencySymbol = (currency) => {
-    if (!currency) return "$";
-    const c = String(currency).toUpperCase();
-    if (c.includes("EUR")) return "€";
-    if (c.includes("GBP")) return "£";
-    if (c.includes("JPY") || c.includes("CNY")) return "¥";
-    if (c.includes("KZT")) return "₸";
-    if (c.includes("RUB")) return "₽";
-    if (c.includes("INR")) return "₹";
-    if (c.includes("USD")) return "$";
-    return "$";
-};
 
 export const MediaGallery = ({ group, user, category }) => {
     const [mediaItems, setMediaItems] = useState([]);
@@ -27,7 +13,6 @@ export const MediaGallery = ({ group, user, category }) => {
     const inputRef = useRef(null);
 
     const isPhoto = category === CATEGORY_PHOTO;
-    const isReceipt = category === CATEGORY_RECEIPT;
 
     const fetchMedia = useCallback(async () => {
         if (!group?.id) return;
@@ -87,24 +72,16 @@ export const MediaGallery = ({ group, user, category }) => {
     const openLightbox = (index) => setLightboxIndex(index);
     const closeLightbox = () => setLightboxIndex(null);
 
-    const goNext = (e) => {
-        e?.stopPropagation();
-        if (lightboxIndex === null) return;
-        setLightboxIndex((prev) => (prev + 1) % mediaItems.length);
-    };
-
-    const goPrev = (e) => {
-        e?.stopPropagation();
-        if (lightboxIndex === null) return;
-        setLightboxIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
-    };
-
     useEffect(() => {
         const onKey = (e) => {
             if (lightboxIndex === null) return;
             if (e.key === "Escape") closeLightbox();
-            if (e.key === "ArrowRight") goNext();
-            if (e.key === "ArrowLeft") goPrev();
+            if (e.key === "ArrowRight") {
+                setLightboxIndex((prev) => (prev + 1) % mediaItems.length);
+            }
+            if (e.key === "ArrowLeft") {
+                setLightboxIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
+            }
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
@@ -112,8 +89,6 @@ export const MediaGallery = ({ group, user, category }) => {
 
     const currentItem = lightboxIndex !== null ? mediaItems[lightboxIndex] : null;
     const currentBlob = currentItem ? blobs[currentItem.id] : null;
-
-    const currencySymbol = getCurrencySymbol(group?.currency);
 
     if (loading) {
         return (
@@ -160,7 +135,7 @@ export const MediaGallery = ({ group, user, category }) => {
                                 {blobUrl ? (
                                     <img
                                         src={blobUrl}
-                                        alt="Photo"
+                                        alt="Uploaded media"
                                         className="h-full w-full object-cover"
                                     />
                                 ) : (
@@ -234,7 +209,7 @@ export const MediaGallery = ({ group, user, category }) => {
                                     inputRef.current?.click();
                                 }}
                             >
-
+                                +
                             </button>
                             <span className="[font-family:'Outfit',Helvetica] text-xs font-medium text-emerald-500">
                 Upload photo
@@ -253,6 +228,7 @@ export const MediaGallery = ({ group, user, category }) => {
                                 inputRef.current?.click();
                             }}
                         >
+                            +
                         </button>
                         <span className="[font-family:'Outfit',Helvetica] text-xs font-medium text-emerald-500">
               Scan Receipt
@@ -288,7 +264,10 @@ export const MediaGallery = ({ group, user, category }) => {
                     {mediaItems.length > 1 && (
                         <button
                             type="button"
-                            onClick={goPrev}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
+                            }}
                             className="absolute left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
                         >
                             ‹
@@ -307,7 +286,10 @@ export const MediaGallery = ({ group, user, category }) => {
                     {mediaItems.length > 1 && (
                         <button
                             type="button"
-                            onClick={goNext}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex((prev) => (prev + 1) % mediaItems.length);
+                            }}
                             className="absolute right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
                         >
                             ›

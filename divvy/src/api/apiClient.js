@@ -1,4 +1,22 @@
-const BACKEND_DOMAIN = process.env.BACKEND_DOMAIN || 'http://localhost:8001';
+const BACKEND_DOMAIN = process.env.REACT_APP_BACKEND_DOMAIN;
+let isHandlingUnauthorized = false;
+
+function handleUnauthorized() {
+  if (isHandlingUnauthorized) return;
+  isHandlingUnauthorized = true;
+
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+
+  if (typeof window !== 'undefined') {
+    const currentPath = window.location.pathname;
+    const isAuthPage = currentPath === '/login' || currentPath === '/register';
+    if (!isAuthPage) {
+      window.location.assign('/login');
+    }
+  }
+}
 
 class ApiClient {
   constructor(baseURL = BACKEND_DOMAIN) {
@@ -30,6 +48,9 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        if (response.status === 401) {
+          handleUnauthorized();
+        }
         const error = new Error(data?.detail || 'API error');
         error.status = response.status;
         error.data = data;
