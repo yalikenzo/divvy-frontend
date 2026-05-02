@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { groupApi } from '../../api/groupApi';
 import { CreateGroupPayload, CURRENCIES } from '../../types/group';
-import { Button, Input } from '../ui/FormComponents';
+import { Button, Input } from '../Ui/FormComponents';
 
 export const CreateGroupModal = ({ onClose, onGroupCreated }) => {
   const { user } = useAuth();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { groupApi } from '../../api/groupApi';
 import { UpdateGroupPayload, InviteUserPayload, CURRENCIES } from '../../types/group';
-import { Button, Input, Label } from '../ui/FormComponents';
+import { Button, Input, Label } from '../Ui/FormComponents';
 
 export const GroupSettingsModal = ({ group, onClose, onGroupUpdated }) => {
     const [groupName, setGroupName] = useState(group?.name || group?.title || '');

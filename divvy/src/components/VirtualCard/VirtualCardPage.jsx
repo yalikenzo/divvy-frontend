@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { virtualCardApi } from "../../api/virtualCardApi";
-import { Sidebar } from "../groups/CreatingNewGroup";
+import { Sidebar } from "../Groups/CreatingNewGroup";
 
 const SUPPORTED_CURRENCIES = ["USD", "EUR", "KZT", "JPY", "CNY", "RUB"];
 

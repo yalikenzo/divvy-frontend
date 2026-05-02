@@ -9,7 +9,7 @@ import { groupApi } from "../../api/groupApi";
 import { virtualCardApi } from "../../api/virtualCardApi";
 import { useNavigate, useLocation } from "react-router-dom";
 import { normalizeGroupExpense } from "../../utils/groupExpenseMapper";
-import { MediaGallery } from "../media/MediaGallery";
+import { MediaGallery } from "../Media/MediaGallery";
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));

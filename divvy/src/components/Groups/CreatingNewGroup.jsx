@@ -5,13 +5,13 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import GroupDetailPage from "./GroupDetailPage";
 import { GroupExpenseDetailsPage } from "./GroupExpenseDetailsPage";
 import { cn } from "../../utils/cn";
-import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "../ui/FormComponents";
+import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "../Ui/FormComponents";
 import { CreateGroupModal } from "./CreateGroupModal";
 import { groupApi } from "../../api/groupApi";
 import { userApi } from "../../api/userApi";
 import { useAuth } from "../../hooks/useAuth";
 import { normalizeGroupExpense } from "../../utils/groupExpenseMapper";
-import { VirtualCardPage } from "../virtualCard/VirtualCardPage";
+import { VirtualCardPage } from "../VirtualCard/VirtualCardPage";
 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
