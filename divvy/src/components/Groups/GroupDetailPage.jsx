@@ -1,6 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva } from "class-variance-authority";
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { clsx } from "clsx";
@@ -52,7 +50,6 @@ class SectionErrorBoundary extends React.Component {
   }
 }
 
-/* ──────────────────────── helpers ──────────────────────── */
 
 const parseDecimal = (value) => {
   if (value === null || value === undefined) return 0;
@@ -94,31 +91,6 @@ const deepClone = (obj) => {
   }
 };
 
-/* ──────────────────────── UI primitives ──────────────────────── */
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: { default: "h-9 px-4 py-2", sm: "h-8 rounded-md px-3 text-xs", lg: "h-10 rounded-md px-8", icon: "h-9 w-9" },
-    },
-    defaultVariants: { variant: "default", size: "default" },
-  }
-);
-
-const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-});
-Button.displayName = "Button";
 
 const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div ref={ref} className={cn("rounded-xl border bg-card text-card-foreground shadow", className)} {...props} />
@@ -146,33 +118,19 @@ const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
 ));
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 
-/* ──────────────────────── Pay Debt Modal ──────────────────────── */
-/*
- * KEY FIXES:
- * 1. resolvedSplitId is reset to null on every open so a paid split
- *    is never reused on the next payment.
- * 2. After payDebt succeeds we reload cards so the balance updates
- *    immediately inside the still-open modal — then close.
- * 3. onPaid receives the paid splitId so the parent can optimistically
- *    remove it from the list before the server round-trip finishes.
- * 4. resolveSplitId: expenses paid by toUserId, current user's split with
- *    owed_amount < 0. Prefer PENDING/UNPAID/etc.; if none, fall back to any
- *    such split — some backends mark splits PAID while net balances still
- *    show debt until payDebt runs.
- */
 const expensePayerId = (exp) =>
   Number(exp?.payer_id ?? exp?.payer?.id ?? exp?.paid_by_user_id ?? exp?.paid_by ?? 0);
 
-const normalizedSplitStatus = (s) => (s?.status || "").toString().toUpperCase().trim();
+const STATUS_PAID = "PAID";
+const STATUS_PENDING = "PENDING";
 
-/** Statuses that clearly mean "still owe / not settled in the app" */
-const isUnsettledSplitStatus = (s) => {
-  const u = normalizedSplitStatus(s);
-  if (!u) return true;
-  if (["PENDING", "UNPAID", "OWED", "OPEN", "DUE", "ACTIVE", "OUTSTANDING"].includes(u)) return true;
-  if (["PAID", "SETTLED", "COMPLETED", "CLOSED"].includes(u)) return false;
-  return true;
-};
+const normalizeStatus = (status) =>
+  String(status || "").toUpperCase().trim() === STATUS_PAID ? STATUS_PAID : STATUS_PENDING;
+
+const normalizedSplitStatus = (split) => normalizeStatus(split?.status);
+const normalizedDetailStatus = (detail) =>
+  normalizeStatus(detail?.status ?? detail?.split_status ?? detail?.expense_split_status ?? detail?.payment_status);
+const isPendingStatus = (status) => normalizeStatus(status) === STATUS_PENDING;
 
 const PayDebtModal = ({
   open,
@@ -184,7 +142,7 @@ const PayDebtModal = ({
   groupId,
   toUserId,
   currentUserId,
-  onPaid,   // called with ({ splitId, toUserId }) after successful payment
+  onPaid,
   group,
 }) => {
   const [cards, setCards] = useState([]);
@@ -192,8 +150,6 @@ const PayDebtModal = ({
   const [loadingCards, setLoadingCards] = useState(false);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
-  // Never persist resolvedSplitId across opens — always start null so a
-  // previously-paid split ID can't be reused.
   const resolvedSplitIdRef = useRef(null);
 
   const groupCurrency = ((group?.currency || "KZT").split("–")[0]).trim().toUpperCase();
@@ -215,7 +171,6 @@ const PayDebtModal = ({
 
   useEffect(() => {
     if (!open) {
-      // Reset everything when modal closes so next open is clean
       resolvedSplitIdRef.current = null;
       setError("");
       setCards([]);
@@ -224,7 +179,7 @@ const PayDebtModal = ({
     }
     resolvedSplitIdRef.current = initialSplitId || null;
     loadCards();
-  }, [open]); // intentionally only on open toggle
+  }, [open]); 
 
   const resolveSplitId = async () => {
     if (resolvedSplitIdRef.current) return resolvedSplitIdRef.current;
@@ -249,7 +204,7 @@ const PayDebtModal = ({
         candidates.push({
           id: s.id,
           absOwed: Math.abs(owe),
-          unsettled: isUnsettledSplitStatus(s),
+          unsettled: isPendingStatus(s?.status),
         });
       }
     }
@@ -280,15 +235,12 @@ const PayDebtModal = ({
       const sid = await resolveSplitId();
       await virtualCardApi.payDebt(selectedCardId, { expense_split_id: sid });
 
-      // Notify parent with the paid split ID for optimistic UI update
       onPaid?.({ splitId: sid, toUserId: Number(toUserId) });
       onClose();
     } catch (err) {
       console.error("Payment failed:", err);
       const detail = err?.data?.detail || err?.data?.message || err?.message || "Payment failed";
       const detailLower = String(detail).toLowerCase();
-      // Backend may return 400 if the split was already paid (e.g. user retries before UI refresh).
-      // In that case, treat it as a successful sync: update UI + close modal.
       if (err?.status === 400 && detailLower.includes("already paid")) {
         try {
           const sid = await resolveSplitId();
@@ -389,7 +341,6 @@ const PayDebtModal = ({
   );
 };
 
-/* ──────────────────────── Expense Detail View ──────────────────────── */
 
 const ExpenseDetailView = ({ expense, group, user, onBack, onEdit, onDeleted }) => {
   const [rawData, setRawData] = useState(null);
@@ -449,7 +400,7 @@ const ExpenseDetailView = ({ expense, group, user, onBack, onEdit, onDeleted }) 
         splitType: s.split_type || "ORIGINAL",
         status: s.status || "PENDING",
         refundToUserId: Number(s.refund_to_user_id ?? 0),
-        splitId: s.id ?? null,  // ← THIS IS THE KEY FIX: use s.id, not s.splitId
+        splitId: s.id ?? null, 
       }));
     } catch { return []; }
   }, [data]);
@@ -485,8 +436,6 @@ const ExpenseDetailView = ({ expense, group, user, onBack, onEdit, onDeleted }) 
     onEdit(rawData || deepClone(expense));
   }, [rawData, expense, onEdit]);
 
-  // After payment: optimistically mark the split as PAID immediately,
-  // then re-fetch in the background so the UI never lags behind the DB.
   const handlePaid = useCallback(async (paid) => {
     const paidSplitId = typeof paid === "object" && paid ? paid.splitId : paid;
     if (paidSplitId) {
@@ -501,7 +450,6 @@ const ExpenseDetailView = ({ expense, group, user, onBack, onEdit, onDeleted }) 
         };
       });
     }
-    // Background re-fetch to sync with server (not awaited so UI is instant)
     fetchDetail();
   }, [fetchDetail]);
 
@@ -580,7 +528,7 @@ const ExpenseDetailView = ({ expense, group, user, onBack, onEdit, onDeleted }) 
                           toUserId: payerId,
                           toUserName: payerName,
                           amount: Math.abs(split.owedAmount),
-                          splitId: split.splitId  // ← Now this will be the correct ID
+                          splitId: split.splitId 
                         });
                       }}
                       className="text-[11px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold whitespace-nowrap hover:bg-amber-200 transition-colors">
@@ -644,7 +592,6 @@ const ExpenseDetailView = ({ expense, group, user, onBack, onEdit, onDeleted }) 
   );
 };
 
-/* ──────────────────────── Full-Screen Expense Editor ──────────────────────── */
 
 const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, existingExpense, onExpenseUpdated }) => {
   const navigate = useNavigate();
@@ -665,7 +612,7 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
   const [shareType, setShareType] = useState("EQUAL");
   const [items, setItems] = useState([]);
   const [scanFiles, setScanFiles] = useState([]);
-  const [lastScannedSignature, setLastScannedSignature] = useState("");
+  const [scannedFileSignatures, setScannedFileSignatures] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -739,7 +686,6 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     try {
       sessionStorage.setItem(draftKey, JSON.stringify({ expenseName, paidById, shareType, items, activeMemberIds }));
     } catch {
-      // sessionStorage can throw in private/incognito mode — safe to ignore
     }
   }, [open, expenseName, paidById, shareType, items, activeMemberIds, draftKey, isEditing]);
 
@@ -773,11 +719,16 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     return map;
   }, [expenseMembers, normalizedItems]);
 
+  const getFileSignature = useCallback((file) => `${file.name}:${file.size}:${file.lastModified}`, []);
+  const pendingScanFiles = useMemo(
+    () => scanFiles.filter((file) => !scannedFileSignatures.includes(getFileSignature(file))),
+    [scanFiles, scannedFileSignatures, getFileSignature]
+  );
+
   if (!open) return null;
 
   const activeShares = shareType === "ITEMIZED" ? itemizedMap : equalMap;
-  const currentFilesSignature = scanFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|");
-  const canRunScan = scanFiles.length > 0 && currentFilesSignature !== lastScannedSignature && !isScanning;
+  const canRunScan = pendingScanFiles.length > 0 && !isScanning;
   const handleUnauthorized = () => { navigate(`/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`); };
 
   const toggleMemberParticipation = (memberId) => {
@@ -792,19 +743,23 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     }
     const next = [...expenseMembers, memberId];
     setActiveMemberIds(next);
-    setItems((prev) => prev.map((item) => { const ns = { ...(item.assignedShares || {}) }; if (!Object.prototype.hasOwnProperty.call(ns, memberId)) ns[memberId] = 1; return { ...item, assignedShares: ns }; }));
+    setItems((prev) => prev.map((item) => { const ns = { ...(item.assignedShares || {}) }; if (!Object.prototype.hasOwnProperty.call(ns, memberId)) ns[memberId] = 0; return { ...item, assignedShares: ns }; }));
   };
 
   const handleScan = async () => {
-    if (!scanFiles.length) return;
+    if (!pendingScanFiles.length) return;
     setIsScanning(true); setError("");
     try {
-      const response = await groupApi.scanReceipt(group.id, scanFiles);
+      const response = await groupApi.scanReceipt(group.id, pendingScanFiles);
       const raw = Array.isArray(response) ? response : Array.isArray(response?.items) ? response.items : Array.isArray(response?.data) ? response.data : [];
-      const scanned = raw.map((item, idx) => { const shares = {}; expenseMembers.forEach((id) => { shares[id] = 1; }); return { id: Date.now() + idx, name: item.item_name || item.name || `Item ${idx + 1}`, price: Number(item.price || 0), quantity: Number(item.quantity || 1), assignedShares: shares }; });
+      const scanned = raw.map((item, idx) => { const shares = {}; expenseMembers.forEach((id) => { shares[id] = 0; }); return { id: Date.now() + idx, name: item.item_name || item.name || `Item ${idx + 1}`, price: Number(item.price || 0), quantity: Number(item.quantity || 1), assignedShares: shares }; });
       setItems((prev) => [...prev, ...scanned]);
       setShareType("ITEMIZED");
-      setLastScannedSignature(currentFilesSignature);
+      setScannedFileSignatures((prev) => {
+        const next = new Set(prev);
+        pendingScanFiles.forEach((file) => next.add(getFileSignature(file)));
+        return Array.from(next);
+      });
     } catch (e) {
       if (e?.status === 401) { handleUnauthorized(); return; }
       setError(e.message || "Failed to scan receipt");
@@ -816,19 +771,73 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     const price = Number(draftItemPrice);
     const qty = Number(draftItemQty || 1);
     if (!name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(qty) || qty <= 0) { setError("Please enter valid item data"); return; }
-    const shares = {}; expenseMembers.forEach((id) => { shares[id] = 1; });
+    const shares = {}; expenseMembers.forEach((id) => { shares[id] = 0; });
     setItems((prev) => [...prev, { id: Date.now(), name, price, quantity: qty, assignedShares: shares }]);
     setDraftItemName(""); setDraftItemPrice(""); setDraftItemQty("1"); setError("");
   };
 
   const updateShares = (itemId, memberId, diff) => {
-    setItems((prev) => prev.map((item) => { if (item.id !== itemId) return item; const ns = { ...(item.assignedShares || {}) }; ns[memberId] = Math.max(0, (Number(ns[memberId]) || 0) + diff); return { ...item, assignedShares: ns }; }));
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== itemId) return item;
+      const ns = { ...(item.assignedShares || {}) };
+      const current = Number(ns[memberId]) || 0;
+      const maxPerMember = Number(item.quantity || 0);
+      ns[memberId] = Math.max(0, Math.min(maxPerMember, current + diff));
+      return { ...item, assignedShares: ns };
+    }));
+  };
+
+  const splitItemLine = (itemId) => {
+    setItems((prev) => {
+      const target = prev.find((item) => item.id === itemId);
+      if (!target) return prev;
+      const qty = Number(target.quantity || 0);
+      if (qty <= 1) return prev;
+
+      const nextItems = [];
+      prev.forEach((item) => {
+        if (item.id !== itemId) {
+          nextItems.push(item);
+          return;
+        }
+
+        const adjustedShares = { ...(item.assignedShares || {}) };
+        Object.keys(adjustedShares).forEach((k) => {
+          const memberId = Number(k);
+          const current = Number(adjustedShares[memberId]) || 0;
+          adjustedShares[memberId] = Math.max(0, Math.min(qty - 1, current));
+        });
+
+        nextItems.push({
+          ...item,
+          quantity: qty - 1,
+          assignedShares: adjustedShares,
+        });
+        nextItems.push({
+          ...item,
+          id: Date.now() + Math.floor(Math.random() * 10000),
+          quantity: 1,
+          assignedShares: { ...(item.assignedShares || {}) },
+        });
+      });
+
+      return nextItems;
+    });
   };
 
   const submitExpense = async () => {
     if (!expenseName.trim()) { setError("Expense title is required"); return; }
     if (!expenseMembers.length) { setError("No group members found"); return; }
     if (totalAmount <= 0) { setError("Add at least one item"); return; }
+    if (
+      shareType === "ITEMIZED" &&
+      normalizedItems.some((item) =>
+        Object.entries(item.assignedShares || {}).filter(([, v]) => Number(v) > 0).length === 0
+      )
+    ) {
+      setError("Each item must be assigned to at least one member.");
+      return;
+    }
     setIsSaving(true); setError("");
     try {
       const payload = {
@@ -861,7 +870,24 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
 
   return (
     <section className="fixed inset-0 z-[60] bg-white text-[#101828] overflow-y-auto">
-      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(e) => setScanFiles(Array.from(e.target.files || []))} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const selectedFiles = Array.from(e.target.files || []);
+          if (!selectedFiles.length) return;
+          setScanFiles((prev) => {
+            const unique = new Map(prev.map((file) => [getFileSignature(file), file]));
+            selectedFiles.forEach((file) => unique.set(getFileSignature(file), file));
+            return Array.from(unique.values());
+          });
+          e.target.value = "";
+        }}
+      />
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-4 sm:py-6">
         <div className="flex items-center justify-between">
           <button type="button" onClick={onClose} className="text-sm text-[#6a7282] hover:text-[#101828]">Cancel</button>
@@ -890,7 +916,9 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
 
         {!isEditing && scanFiles.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-[#6a7282]">{scanFiles.length} file(s) selected</span>
+            <span className="text-xs text-[#6a7282]">
+              {scanFiles.length} file(s) selected, {pendingScanFiles.length} new
+            </span>
             <button type="button" onClick={handleScan} disabled={!canRunScan} className="rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 px-5 py-2.5 text-sm font-semibold text-white">{isScanning ? "Scanning…" : "Run scan"}</button>
           </div>
         )}
@@ -901,22 +929,74 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <input value={item.name} onChange={(e) => setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, name: e.target.value } : x)))} className="h-11 w-full rounded-lg px-3 text-[#101828] border border-gray-200" />
-                  <p className="text-sm text-[#6a7282] mt-1">{item.quantity} × {(Number(item.price) || 0).toFixed(2)} = {(item.total_price || 0).toFixed(2)}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-xs text-[#6a7282]">Qty</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const parsed = Number(e.target.value);
+                        const nextQty = Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : 1;
+                        setItems((prev) =>
+                          prev.map((x) => {
+                            if (x.id !== item.id) return x;
+                            const clampedShares = {};
+                            Object.entries(x.assignedShares || {}).forEach(([memberId, share]) => {
+                              clampedShares[memberId] = Math.min(Number(share) || 0, nextQty);
+                            });
+                            return { ...x, quantity: nextQty, assignedShares: clampedShares };
+                          })
+                        );
+                      }}
+                      className="h-8 w-20 rounded-md border border-gray-200 px-2 text-sm"
+                    />
+                    <p className="text-sm text-[#6a7282]">{item.quantity} × {(Number(item.price) || 0).toFixed(2)} = {(item.total_price || 0).toFixed(2)}</p>
+                  </div>
                 </div>
-                <button type="button" onClick={() => setItems((prev) => prev.filter((x) => x.id !== item.id))} className="text-red-500 hover:text-red-700 text-lg leading-none mt-3">✕</button>
+                <div className="flex items-center gap-2 mt-3">
+                  {shareType === "ITEMIZED" && Number(item.quantity || 0) > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => splitItemLine(item.id)}
+                      className="h-7 rounded-md border border-gray-200 px-2 text-xs text-gray-600 hover:bg-gray-50"
+                    >
+                      Split
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setItems((prev) => prev.filter((x) => x.id !== item.id))} className="text-red-500 hover:text-red-700 text-lg leading-none">✕</button>
+                </div>
               </div>
               {shareType === "ITEMIZED" && (
                 <div className="mt-3 space-y-2">
                   {members.filter((m) => expenseMembers.includes(m.id)).map((m) => {
                     const s = Number(item.assignedShares?.[m.id]) || 0;
                     const active = s > 0;
+                    const maxQty = Number(item.quantity || 0);
+                    const canDecrease = s > 0;
+                    const canIncrease = s < maxQty;
                     return (
                       <div key={`${item.id}-${m.id}`} className={`flex items-center justify-between rounded-lg px-3 py-2 border ${active ? "bg-emerald-50 border-emerald-200" : "bg-gray-50 border-gray-200"}`}>
                         <span className="text-sm">{m.name}</span>
                         <div className="flex items-center gap-2">
-                          <button type="button" className="w-7 h-7 rounded border flex items-center justify-center text-sm" onClick={() => updateShares(item.id, m.id, -1)}>−</button>
+                          <button
+                            type="button"
+                            disabled={!canDecrease}
+                            className={`w-7 h-7 rounded border flex items-center justify-center text-sm ${canDecrease ? "" : "opacity-40 cursor-not-allowed"}`}
+                            onClick={() => updateShares(item.id, m.id, -1)}
+                          >
+                            −
+                          </button>
                           <span className={`min-w-6 text-center text-sm ${active ? "text-emerald-600 font-semibold" : "text-gray-500"}`}>{s}</span>
-                          <button type="button" className="w-7 h-7 rounded border flex items-center justify-center text-sm" onClick={() => updateShares(item.id, m.id, 1)}>+</button>
+                          <button
+                            type="button"
+                            disabled={!canIncrease}
+                            className={`w-7 h-7 rounded border flex items-center justify-center text-sm ${canIncrease ? "" : "opacity-40 cursor-not-allowed"}`}
+                            onClick={() => updateShares(item.id, m.id, 1)}
+                          >
+                            +
+                          </button>
                         </div>
                       </div>
                     );
@@ -966,7 +1046,6 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
   );
 };
 
-/* ──────────────────────── Expenses List ──────────────────────── */
 
 const ExpensesContent = ({ user, group, expenses, onAddExpense, onDeleteExpense, onOpenExpense }) => {
   const currencySymbol = getCurrencySymbol(group?.currency);
@@ -1026,13 +1105,12 @@ const ExpensesContent = ({ user, group, expenses, onAddExpense, onDeleteExpense,
   );
 };
 
-/* ──────────────────────── Balances Content ──────────────────────── */
 
 const BalancesContent = ({ group, user }) => {
   const [splitData, setSplitData] = useState(null);
   const [balances, setBalances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);  // subtle re-fetch indicator
+  const [refreshing, setRefreshing] = useState(false); 
   const [error, setError] = useState("");
   const [showOwedDetails, setShowOwedDetails] = useState(false);
   const [showReceivableDetails, setShowReceivableDetails] = useState(false);
@@ -1049,8 +1127,35 @@ const BalancesContent = ({ group, user }) => {
     return map;
   }, [group]);
 
-  // Fetch split details + per-member balances in one shot.
-  // `silent` = true skips the full loading spinner (used after payment).
+  const splitStatusById = useMemo(() => {
+    const map = {};
+    const expenseContainers = [
+      ...(Array.isArray(splitData?.expenses) ? splitData.expenses : []),
+      ...(Array.isArray(splitData?.group_expenses) ? splitData.group_expenses : []),
+      ...(Array.isArray(splitData?.all_expenses) ? splitData.all_expenses : []),
+    ];
+
+    expenseContainers.forEach((expense) => {
+      const splits = expense?.expenses_split || expense?.splits || [];
+      splits.forEach((split) => {
+        const splitId = Number(split?.id ?? split?.expense_split_id ?? split?.split_id ?? 0);
+        if (!splitId) return;
+        map[splitId] = normalizedSplitStatus(split);
+      });
+    });
+
+    return map;
+  }, [splitData]);
+
+  const resolvedDetailStatus = useCallback((detail) => {
+    const fromDetail = normalizedDetailStatus(detail);
+    if (fromDetail) return fromDetail;
+
+    const splitId = Number(detail?.expense_split_id ?? detail?.split_id ?? detail?.id ?? 0);
+    if (splitId && splitStatusById[splitId]) return splitStatusById[splitId];
+    return "";
+  }, [splitStatusById]);
+
   const fetchAll = useCallback(async (silent = false) => {
     if (!group?.id) return;
     if (silent) setRefreshing(true); else setLoading(true);
@@ -1078,32 +1183,64 @@ const BalancesContent = ({ group, user }) => {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const handlePaid = useCallback(async (paid) => {
-    const paidToUserId =
-      (typeof paid === "object" && paid ? paid.toUserId : null) ?? payModal?.toUserId;
-
-
     setSplitData((prev) => {
       if (!prev) return prev;
-      const remaining = (prev.owed_amount_details || []).filter(
-        (d) => Number(d.to_user_id) !== Number(paidToUserId)
-      );
+      const paidSplitId = typeof paid === "object" && paid ? paid.splitId : paid;
+      const paidToUserId =
+        (typeof paid === "object" && paid ? paid.toUserId : null) ?? payModal?.toUserId;
+
+      const markAsPaid = (details = []) =>
+        details.map((detail) => {
+          const detailSplitId = Number(detail?.expense_split_id ?? detail?.split_id ?? detail?.id ?? 0);
+          const sameSplit = paidSplitId ? detailSplitId === Number(paidSplitId) : false;
+          const sameUser = Number(detail?.to_user_id ?? detail?.from_user_id) === Number(paidToUserId);
+
+          // Prefer exact split match; fall back to user match only when split id is unavailable.
+          if (paidSplitId ? !sameSplit : !sameUser) return detail;
+
+          return {
+            ...detail,
+            status: "PAID",
+            split_status: "PAID",
+            expense_split_status: "PAID",
+          };
+        });
+
+      const nextOwed = markAsPaid(prev.owed_amount_details || []);
+      const nextReceivable = markAsPaid(prev.receivable_amount_details || []);
+      const unsettledOwed = nextOwed.filter((detail) => isPendingStatus(resolvedDetailStatus(detail)));
+      const unsettledReceivable = nextReceivable.filter((detail) => isPendingStatus(resolvedDetailStatus(detail)));
+
       return {
         ...prev,
-        owed_amount_details: remaining,
-        total_owed_amount: String(
-          remaining.reduce((sum, d) => sum + Math.abs(parseDecimal(d.amount)), 0) * -1
-        ),
+        owed_amount_details: nextOwed,
+        receivable_amount_details: nextReceivable,
+        total_owed_amount: String(unsettledOwed.reduce((sum, d) => sum + Math.abs(parseDecimal(d.amount)), 0) * -1),
+        total_receivable_amount: String(unsettledReceivable.reduce((sum, d) => sum + Math.abs(parseDecimal(d.amount)), 0)),
       };
     });
     setPayModal(null);
-    // Silent background re-fetch to sync with accurate server state
     await fetchAll(true);
-  }, [fetchAll, payModal?.toUserId]);
+  }, [fetchAll, payModal?.toUserId, resolvedDetailStatus]);
 
-  const totalReceivable = Math.abs(parseDecimal(splitData?.total_receivable_amount ?? 0));
-  const totalOwed = Math.abs(parseDecimal(splitData?.total_owed_amount ?? 0));
-  const owedDetails = splitData?.owed_amount_details || [];
-  const receivableDetails = splitData?.receivable_amount_details || [];
+  const owedDetails = useMemo(
+    () => (splitData?.owed_amount_details || []).filter((detail) => isPendingStatus(resolvedDetailStatus(detail))),
+    [splitData, resolvedDetailStatus]
+  );
+  const paidOwedDetails = useMemo(
+    () => (splitData?.owed_amount_details || []).filter((detail) => !isPendingStatus(resolvedDetailStatus(detail))),
+    [splitData, resolvedDetailStatus]
+  );
+  const receivableDetails = useMemo(
+    () => (splitData?.receivable_amount_details || []).filter((detail) => isPendingStatus(resolvedDetailStatus(detail))),
+    [splitData, resolvedDetailStatus]
+  );
+  const paidReceivableDetails = useMemo(
+    () => (splitData?.receivable_amount_details || []).filter((detail) => !isPendingStatus(resolvedDetailStatus(detail))),
+    [splitData, resolvedDetailStatus]
+  );
+  const totalReceivable = receivableDetails.reduce((sum, detail) => sum + Math.abs(parseDecimal(detail.amount)), 0);
+  const totalOwed = owedDetails.reduce((sum, detail) => sum + Math.abs(parseDecimal(detail.amount)), 0);
 
   if (loading) {
     return (
@@ -1165,6 +1302,24 @@ const BalancesContent = ({ group, user }) => {
         </div>
       )}
 
+      {paidReceivableDetails.length > 0 && (
+        <div className="rounded-[14px] bg-white p-4 shadow-[0px_1px_3px_#0000000a] space-y-2">
+          <p className="text-xs uppercase tracking-wide text-gray-400 font-semibold mb-2">Already paid to you</p>
+          {paidReceivableDetails.map((d, idx) => (
+            <div
+              key={`paid-receivable-${d?.expense_split_id ?? d?.split_id ?? d?.id ?? d?.from_user_id ?? "x"}-${idx}`}
+              className="flex items-center justify-between rounded-lg bg-emerald-50/60 px-3 py-2.5 border border-emerald-100"
+            >
+              <span className="text-sm text-[#101828]">{membersMap[Number(d.from_user_id)] || `User #${d.from_user_id}`}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-emerald-600">+{currencySymbol}{Math.abs(parseDecimal(d.amount)).toFixed(2)}</span>
+                <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold whitespace-nowrap">Paid</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── You owe ── */}
       {totalOwed > 0 && (
         <div
@@ -1197,6 +1352,7 @@ const BalancesContent = ({ group, user }) => {
             const toUserId = Number(d.to_user_id);
             const toUserName = membersMap[toUserId] || `User #${toUserId}`;
             const amt = Math.abs(parseDecimal(d.amount));
+            const splitId = Number(d?.expense_split_id ?? d?.split_id ?? d?.id ?? 0) || null;
             return (
               <div
                 key={`owed-${d?.expense_split_id ?? d?.split_id ?? d?.id ?? toUserId ?? "x"}-${idx}`}
@@ -1206,10 +1362,34 @@ const BalancesContent = ({ group, user }) => {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-red-500">-{currencySymbol}{amt.toFixed(2)}</span>
                   <button type="button"
-                    onClick={(e) => { e.stopPropagation(); setPayModal({ toUserId, toUserName, amount: amt }); }}
+                    onClick={(e) => { e.stopPropagation(); setPayModal({ toUserId, toUserName, amount: amt, splitId }); }}
+                    disabled={!splitId}
                     className="text-[11px] px-3 py-1.5 rounded-full bg-indigo-950 text-white font-semibold hover:bg-indigo-900 transition-colors whitespace-nowrap">
                     Pay
                   </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {paidOwedDetails.length > 0 && (
+        <div className="rounded-[14px] bg-white p-4 shadow-[0px_1px_3px_#0000000a] space-y-2">
+          <p className="text-xs uppercase tracking-wide text-gray-400 font-semibold mb-2">Already paid by you</p>
+          {paidOwedDetails.map((d, idx) => {
+            const toUserId = Number(d.to_user_id);
+            const toUserName = membersMap[toUserId] || `User #${toUserId}`;
+            const amt = Math.abs(parseDecimal(d.amount));
+            return (
+              <div
+                key={`paid-owed-${d?.expense_split_id ?? d?.split_id ?? d?.id ?? toUserId ?? "x"}-${idx}`}
+                className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 border border-gray-200"
+              >
+                <span className="text-sm text-[#101828]">{toUserName}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-500">-{currencySymbol}{amt.toFixed(2)}</span>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold whitespace-nowrap">Paid</span>
                 </div>
               </div>
             );
@@ -1272,6 +1452,7 @@ const BalancesContent = ({ group, user }) => {
         toUserName={payModal?.toUserName || ""}
         amount={payModal?.amount || 0}
         currencySymbol={currencySymbol}
+        splitId={payModal?.splitId || null}
         groupId={group?.id}
         toUserId={payModal?.toUserId || null}
         currentUserId={currentUserId}

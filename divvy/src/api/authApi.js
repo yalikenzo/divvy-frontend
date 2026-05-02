@@ -21,10 +21,14 @@ function parseJWT(token) {
 }
 
 function saveTokenPair(tokenPair) {
-  if (!tokenPair?.access_token || !tokenPair?.refresh_token) return;
+  if (!tokenPair?.access_token) return;
 
   localStorage.setItem('access_token', tokenPair.access_token);
-  localStorage.setItem('refresh_token', tokenPair.refresh_token);
+  if (tokenPair.refresh_token) {
+    localStorage.setItem('refresh_token', tokenPair.refresh_token);
+  } else {
+    localStorage.removeItem('refresh_token');
+  }
 
   const userPayload = parseJWT(tokenPair.access_token);
   if (!userPayload) return;

@@ -8,6 +8,7 @@ import { cn } from "../../utils/cn";
 import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "../ui/FormComponents";
 import { CreateGroupModal } from "./CreateGroupModal";
 import { groupApi } from "../../api/groupApi";
+import { userApi } from "../../api/userApi";
 import { useAuth } from "../../hooks/useAuth";
 import { normalizeGroupExpense } from "../../utils/groupExpenseMapper";
 import { VirtualCardPage } from "../virtualCard/VirtualCardPage";
@@ -110,10 +111,21 @@ const Toggle = ({ checked, onChange, label, description }) => (
   </div>
 );
 
-const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
-  const [displayName, setDisplayName] = useState(user?.name || "");
+const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, onProfilePersist }) => {
+  const [firstName, setFirstName] = useState(user?.first_name || user?.name?.split(" ")[0] || "");
+  const [lastName, setLastName] = useState(
+    user?.last_name || (user?.name || "").split(" ").slice(1).join(" ")
+  );
+  const [initialFirstName, setInitialFirstName] = useState(user?.first_name || user?.name?.split(" ")[0] || "");
+  const [initialLastName, setInitialLastName] = useState(
+    user?.last_name || (user?.name || "").split(" ").slice(1).join(" ")
+  );
   const [email, setEmail] = useState(user?.email || "");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [language, setLanguage] = useState("English");
   const [dateFormat, setDateFormat] = useState("MM/DD/YYYY");
@@ -125,32 +137,114 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
 
   const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "BRL"];
 
-  function handleSaveProfile() {
-    onUserChange({
-      name: displayName,
-      email: email,
-      initials: displayName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2),
-    });
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2000);
+  useEffect(() => {
+    const nextFirstName = user?.first_name || user?.name?.split(" ")[0] || "";
+    const nextLastName = user?.last_name || (user?.name || "").split(" ").slice(1).join(" ");
+
+    setFirstName(nextFirstName);
+    setLastName(nextLastName);
+    setInitialFirstName(nextFirstName);
+    setInitialLastName(nextLastName);
+    setEmail(user?.email || "");
+  }, [user?.first_name, user?.last_name, user?.name, user?.email]);
+
+  const hasProfileChanges =
+    firstName.trim() !== initialFirstName.trim() || lastName.trim() !== initialLastName.trim();
+
+  async function handleSaveProfile() {
+    if (!hasProfileChanges || isSavingProfile) return;
+
+    setIsSavingProfile(true);
+    setProfileSaved(false);
+    setProfileError("");
+
+    const normalizedFirstName = firstName.trim();
+    const normalizedLastName = lastName.trim();
+
+    try {
+      await userApi.updateUserProfile({
+        first_name: normalizedFirstName,
+        last_name: normalizedLastName,
+      });
+
+      const fullName = [normalizedFirstName, normalizedLastName].filter(Boolean).join(" ").trim();
+      onUserChange({
+        ...user,
+        first_name: normalizedFirstName,
+        last_name: normalizedLastName,
+        name: fullName || "User",
+        email,
+        initials: [normalizedFirstName, normalizedLastName]
+          .map((part) => part?.[0] || "")
+          .join("")
+          .toUpperCase()
+          .slice(0, 2) || "U",
+      });
+      onProfilePersist?.({
+        first_name: normalizedFirstName,
+        last_name: normalizedLastName,
+      });
+
+      setInitialFirstName(normalizedFirstName);
+      setInitialLastName(normalizedLastName);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch (error) {
+      setProfileError(error?.data?.detail || error?.message || "Failed to update profile");
+    } finally {
+      setIsSavingProfile(false);
+    }
   }
 
-  function handleChangePassword() {
+  async function handleDeleteAccount() {
+    if (isDeletingAccount) return;
+
+    const isConfirmed = window.confirm("Are you sure you want to permanently delete your account?");
+    if (!isConfirmed) return;
+
+    setIsDeletingAccount(true);
+    setDeleteError("");
+
+    try {
+      await userApi.deleteAccount();
+      onAccountDeleted?.();
+    } catch (error) {
+      setDeleteError(error?.data?.detail || error?.message || "Failed to delete account");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  }
+
+  async function handleChangePassword() {
     setPwError("");
     setPwSuccess(false);
     if (!currentPw) return setPwError("Please enter your current password.");
     if (newPw.length < 6) return setPwError("New password must be at least 6 characters.");
     if (newPw !== confirmPw) return setPwError("New passwords do not match.");
-    setPwSuccess(true);
-    setCurrentPw("");
-    setNewPw("");
-    setConfirmPw("");
-    setTimeout(() => setPwSuccess(false), 2500);
+
+    setIsChangingPassword(true);
+    try {
+      await userApi.changePassword({
+        current_password: currentPw,
+        new_password: newPw,
+      });
+
+      setPwSuccess(true);
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+      setTimeout(() => setPwSuccess(false), 2500);
+    } catch (error) {
+      setPwError(error?.data?.detail || error?.message || "Failed to update password.");
+    } finally {
+      setIsChangingPassword(false);
+    }
   }
 
   return (
@@ -187,20 +281,32 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label className="font-medium text-indigo-950 text-sm">Display Name</Label>
-              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
+              <Label className="font-medium text-indigo-950 text-sm">First Name</Label>
+              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="font-medium text-indigo-950 text-sm">Last Name</Label>
+              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="font-medium text-indigo-950 text-sm">Email Address</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
             </div>
+            {profileError && <p className="text-red-500 text-xs">{profileError}</p>}
             <div className="flex justify-end mt-1">
               <Button
                 type="button"
                 onClick={handleSaveProfile}
-                className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${profileSaved ? "bg-emerald-400" : "bg-emerald-500 hover:bg-emerald-600"}`}
+                disabled={!hasProfileChanges || isSavingProfile}
+                className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${
+                  !hasProfileChanges || isSavingProfile
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : profileSaved
+                      ? "bg-emerald-400"
+                      : "bg-emerald-500 hover:bg-emerald-600"
+                }`}
               >
-                {profileSaved ? "✓ Saved!" : "Save Changes"}
+                {isSavingProfile ? "Saving..." : profileSaved ? "✓ Saved!" : "Save the Changes"}
               </Button>
             </div>
           </div>
@@ -261,8 +367,17 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
             {pwError && <p className="text-red-500 text-xs">{pwError}</p>}
             {pwSuccess && <p className="text-emerald-500 text-xs">✓ Password updated successfully!</p>}
             <div className="flex justify-end mt-1">
-              <Button type="button" onClick={handleChangePassword} className="h-10 px-5 rounded-[10px] border-0 bg-emerald-500 hover:bg-emerald-600 font-semibold text-sm">
-                Update Password
+              <Button
+                type="button"
+                onClick={handleChangePassword}
+                disabled={isChangingPassword}
+                className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${
+                  isChangingPassword
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-emerald-500 hover:bg-emerald-600"
+                }`}
+              >
+                {isChangingPassword ? "Updating..." : "Update Password"}
               </Button>
             </div>
           </div>
@@ -289,10 +404,18 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
                   <p className="font-medium text-indigo-950 text-sm">Delete Account</p>
                   <p className="text-[#6a7282] text-xs mt-0.5">Permanently remove your account and all associated data</p>
                 </div>
-                <button type="button" className="h-9 px-4 rounded-[10px] bg-red-500 hover:bg-red-600 text-white transition-colors font-medium text-sm">
-                  Delete Account
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeletingAccount}
+                  className={`h-9 px-4 rounded-[10px] text-white transition-colors font-medium text-sm ${
+                    isDeletingAccount ? "bg-red-300 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
+                  }`}
+                >
+                  {isDeletingAccount ? "Deleting..." : "Delete Account"}
                 </button>
               </div>
+              {deleteError && <p className="text-red-500 text-xs">{deleteError}</p>}
             </div>
           </CardContent>
         </Card>
@@ -302,7 +425,7 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
 };
 
 export const CreateGroup = () => {
-  const { user: authUser } = useAuth();
+  const { user: authUser, logout, updateCurrentUserProfile } = useAuth();
   const { groupId, expenseId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -317,10 +440,23 @@ export const CreateGroup = () => {
 
   const [user, setUser] = useState({
     id: authUser?.sub,
+    first_name: authUser?.first_name || "",
+    last_name: authUser?.last_name || "",
     name: authUser?.getFullName?.() || "User",
     email: authUser?.email || "",
     initials: (authUser?.first_name?.[0] || "") + (authUser?.last_name?.[0] || "") || "U",
   });
+
+  useEffect(() => {
+    setUser({
+      id: authUser?.sub,
+      first_name: authUser?.first_name || "",
+      last_name: authUser?.last_name || "",
+      name: authUser?.getFullName?.() || "User",
+      email: authUser?.email || "",
+      initials: (authUser?.first_name?.[0] || "") + (authUser?.last_name?.[0] || "") || "U",
+    });
+  }, [authUser]);
 
   useEffect(() => {
     loadGroups();
@@ -452,6 +588,18 @@ export const CreateGroup = () => {
     if (allExpenses[selectedGroup.id]) return;
     loadGroupExpenses(selectedGroup);
   }, [allExpenses, loadGroupExpenses, selectedGroup]);
+
+  useEffect(() => {
+    if (activePage !== "dashboard") return;
+    if (!groups.length) return;
+
+    const groupsWithoutExpenses = groups.filter((group) => allExpenses[group.id] === undefined);
+    if (!groupsWithoutExpenses.length) return;
+
+    Promise.all(groupsWithoutExpenses.map((group) => loadGroupExpenses(group))).catch((error) => {
+      console.error("Failed to load dashboard expenses:", error);
+    });
+  }, [activePage, groups, allExpenses, loadGroupExpenses]);
 
   const handleOpenExpense = (expense) => {
     navigate(`/groups/${selectedGroup.id}/expenses/${expense.id}`);
@@ -618,7 +766,18 @@ export const CreateGroup = () => {
       )}
 
       <main className="flex-1 overflow-y-auto flex flex-col">
-        {activePage === "settings" && <SettingsPage user={user} onUserChange={setUser} onOpenMobileNav={() => setMobileNavOpen(true)} />}
+        {activePage === "settings" && (
+          <SettingsPage
+            user={user}
+            onUserChange={setUser}
+            onOpenMobileNav={() => setMobileNavOpen(true)}
+            onProfilePersist={updateCurrentUserProfile}
+            onAccountDeleted={() => {
+              logout();
+              navigate("/login");
+            }}
+          />
+        )}
 
         {activePage !== "settings" && (
           <>

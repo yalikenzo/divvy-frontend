@@ -2,11 +2,11 @@ import { apiClient } from './apiClient';
 
 export const virtualCardApi = {
     async getVirtualCard() {
-        return apiClient.get('/virtual-card/');
+        return apiClient.get('/virtual-card');
     },
 
     async createVirtualCard() {
-        return apiClient.post('/virtual-card/');
+        return apiClient.post('/virtual-card');
     },
 
     async payDebt(cardId, payload) {

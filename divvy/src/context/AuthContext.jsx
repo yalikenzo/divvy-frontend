@@ -1,6 +1,6 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { authApi } from '../api/authApi';
-import { RegisterPayload, LoginPayload } from '../types/auth';
+import { RegisterPayload, LoginPayload, User } from '../types/auth';
 
 export const AuthContext = createContext(null);
 
@@ -64,6 +64,26 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   }, []);
 
+  const updateCurrentUserProfile = useCallback((updates) => {
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+
+      const nextUser = new User(
+        prevUser.sub,
+        updates?.email ?? prevUser.email,
+        updates?.first_name ?? prevUser.first_name,
+        updates?.last_name ?? prevUser.last_name,
+        prevUser.is_verified,
+        prevUser.is_active,
+        prevUser.exp,
+        prevUser.type
+      );
+
+      localStorage.setItem('user', JSON.stringify(nextUser));
+      return nextUser;
+    });
+  }, []);
+
   const startGoogleLogin = useCallback(() => {
     window.location.href = authApi.getGoogleLoginUrl();
   }, []);
@@ -96,6 +116,7 @@ export const AuthProvider = ({ children }) => {
     startGoogleLogin,
     completeGoogleLogin,
     logout,
+    updateCurrentUserProfile,
     isAuthenticated: user !== null && !user.isTokenExpired?.(),
     isVerified: user?.is_verified === true,
     isActive: user?.is_active === true,

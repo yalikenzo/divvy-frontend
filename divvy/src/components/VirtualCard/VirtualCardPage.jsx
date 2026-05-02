@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { virtualCardApi } from "../../api/virtualCardApi";
 import { Sidebar } from "../groups/CreatingNewGroup";
 
-const SUPPORTED_CURRENCIES = ["USD", "EUR", "GBP", "KZT", "JPY"];
+const SUPPORTED_CURRENCIES = ["USD", "EUR", "KZT", "JPY", "CNY", "RUB"];
 
 const getCurrencySymbol = (currency) => {
-    const map = { USD: "$", EUR: "€", GBP: "£", JPY: "¥", KZT: "₸", RUB: "₽", INR: "₹" };
+    const map = { USD: "$", EUR: "€", JPY: "¥", KZT: "₸", RUB: "₽", INR: "₹" };
     return map[currency?.toUpperCase()] || "$";
 };
 
@@ -115,6 +115,7 @@ export const VirtualCardPage = ({ user, groups = [], onNavChange }) => {
             setCard(updated);
             setConvertOpen(false);
             setConvertAmount("");
+            window.location.reload();
         } catch (err) {
             setError(err?.message || "Conversion failed");
         } finally {

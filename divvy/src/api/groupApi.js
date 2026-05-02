@@ -1,6 +1,51 @@
 import { apiClient } from './apiClient';
 import { Group, UserGroup } from '../types/group';
 
+const toFiniteNumber = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const normalizeScannedItem = (item) => {
+  const quantity = Math.max(1, toFiniteNumber(item?.quantity, 1));
+  const totalPrice = toFiniteNumber(
+    item?.total_price ?? item?.total ?? item?.price,
+    0
+  );
+  const unitPrice = quantity > 0 ? totalPrice / quantity : totalPrice;
+
+  return {
+    ...item,
+    quantity,
+    price: Number(unitPrice.toFixed(2)),
+    total_price: Number(totalPrice.toFixed(2)),
+  };
+};
+
+const normalizeScannedResponse = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload.map(normalizeScannedItem);
+  }
+
+  if (payload && typeof payload === 'object') {
+    if (Array.isArray(payload.items)) {
+      return {
+        ...payload,
+        items: payload.items.map(normalizeScannedItem),
+      };
+    }
+
+    if (Array.isArray(payload.data)) {
+      return {
+        ...payload,
+        data: payload.data.map(normalizeScannedItem),
+      };
+    }
+  }
+
+  return payload;
+};
+
 export const groupApi = {
   async createGroup(payload) {
     const response = await apiClient.post('/groups/create-group', payload);
@@ -71,7 +116,8 @@ export const groupApi = {
 
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      return response.json();
+      const data = await response.json();
+      return normalizeScannedResponse(data);
     }
     return response.text();
   },
