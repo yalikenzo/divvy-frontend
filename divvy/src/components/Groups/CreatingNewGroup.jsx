@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as React from "react";
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import GroupDetailPage from "./GroupDetailPage";
-import { GroupExpenseDetailsPage } from "./components/Groups/GroupExpenseDetailsPage";
-import { cn } from "./utils/cn";
-import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "./components/ui/FormComponents";
-import { CreateGroupModal } from "./components/Groups/CreateGroupModal";
-import { groupApi } from "./api/groupApi";
-import { useAuth } from "./hooks/useAuth";
-import { normalizeGroupExpense } from "./utils/groupExpenseMapper";
-import { VirtualCardPage } from "./components/VirtualCard/VirtualCardPage";
+import { GroupExpenseDetailsPage } from "./GroupExpenseDetailsPage";
+import { cn } from "../../utils/cn";
+import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "../ui/FormComponents";
+import { CreateGroupModal } from "./CreateGroupModal";
+import { groupApi } from "../../api/groupApi";
+import { useAuth } from "../../hooks/useAuth";
+import { normalizeGroupExpense } from "../../utils/groupExpenseMapper";
+import { VirtualCardPage } from "../virtualCard/VirtualCardPage";
 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
@@ -29,6 +29,16 @@ const Separator = React.forwardRef(
 );
 Separator.displayName = SeparatorPrimitive.Root.displayName;
 
+const PATH_BY_NAV_ID = {
+  dashboard: "/dashboard",
+  groups: "/groups",
+  "virtual-card": "/virtual-card",
+  settings: "/settings",
+};
+
+function pathForSidebarNav(pageId) {
+  return PATH_BY_NAV_ID[pageId] ?? "/dashboard";
+}
 
 export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
   <aside className="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 h-full">
@@ -44,6 +54,7 @@ export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
       ].map((item) => (
         <button
           key={item.id}
+          type="button"
           onClick={() => onNavChange(item.id)}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left w-full ${
             activeNav === item.id ? "bg-indigo-50 text-indigo-600" : "text-[#4a5565] hover:bg-gray-50 hover:text-[#101828]"
@@ -71,15 +82,6 @@ export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
   </aside>
 );
 
-const EmptyState = ({ icon, title, subtitle, action }) => (
-  <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-    <div className="text-5xl">{icon}</div>
-    <p className="font-semibold text-[#101828] text-lg">{title}</p>
-    <p className="text-sm text-[#99a1af] max-w-xs">{subtitle}</p>
-    {action && <div className="mt-2">{action}</div>}
-  </div>
-);
-
 const Section = ({ title, description, children }) => (
   <Card className="bg-white rounded-[14px] border border-gray-100 shadow-[0px_1px_2px_-1px_#0000001a,0px_1px_3px_#0000001a] w-full">
     <CardContent className="p-0">
@@ -99,6 +101,7 @@ const Toggle = ({ checked, onChange, label, description }) => (
       {description && <p className="[font-family:'Outfit',Helvetica] font-normal text-[#6a7282] text-xs leading-4 mt-0.5">{description}</p>}
     </div>
     <button
+      type="button"
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${checked ? "bg-emerald-500" : "bg-gray-200"}`}
     >
@@ -127,23 +130,26 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
 
   const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "BRL"];
 
-   function handleSaveProfile() {
+  function handleSaveProfile() {
     onUserChange({
       name: displayName,
       email: email,
-      initials: displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2),
+      initials: displayName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2),
     });
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2000);
   }
 
   function handleChangePassword() {
-    setPwError(""); setPwSuccess(false);
+    setPwError("");
+    setPwSuccess(false);
     if (!currentPw) return setPwError("Please enter your current password.");
     if (newPw.length < 6) return setPwError("New password must be at least 6 characters.");
     if (newPw !== confirmPw) return setPwError("New passwords do not match.");
     setPwSuccess(true);
-    setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    setCurrentPw("");
+    setNewPw("");
+    setConfirmPw("");
     setTimeout(() => setPwSuccess(false), 2500);
   }
 
@@ -174,20 +180,26 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
             <div>
               <p className="font-semibold text-indigo-950 text-sm">{user?.name}</p>
               <p className="text-[#6a7282] text-xs mt-0.5">Free Plan</p>
-              <button className="mt-1 text-xs text-emerald-600 font-medium hover:text-emerald-700">Change photo</button>
+              <button type="button" className="mt-1 text-xs text-emerald-600 font-medium hover:text-emerald-700">
+                Change photo
+              </button>
             </div>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label className="font-medium text-indigo-950 text-sm">Display Name</Label>
-              <Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="font-medium text-indigo-950 text-sm">Email Address</Label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
             </div>
             <div className="flex justify-end mt-1">
-              <Button onClick={handleSaveProfile} className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${profileSaved ? "bg-emerald-400" : "bg-emerald-500 hover:bg-emerald-600"}`}>
+              <Button
+                type="button"
+                onClick={handleSaveProfile}
+                className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${profileSaved ? "bg-emerald-400" : "bg-emerald-500 hover:bg-emerald-600"}`}
+              >
                 {profileSaved ? "✓ Saved!" : "Save Changes"}
               </Button>
             </div>
@@ -204,8 +216,16 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
               <div key={label} className="flex flex-col gap-1.5">
                 <Label className="font-medium text-indigo-950 text-sm">{label}</Label>
                 <div className="relative">
-                  <select value={value} onChange={e => onChange(e.target.value)} className="w-full h-11 pl-4 pr-10 rounded-[10px] border border-gray-200 bg-white text-indigo-950 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-400">
-                    {options.map(o => <option key={o} value={o}>{o}</option>)}
+                  <select
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="w-full h-11 pl-4 pr-10 rounded-[10px] border border-gray-200 bg-white text-indigo-950 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  >
+                    {options.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
                   </select>
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">▾</span>
                 </div>
@@ -228,20 +248,22 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label className="font-medium text-indigo-950 text-sm">Current Password</Label>
-              <Input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="••••••••" className="h-11 rounded-[10px] border-gray-200" />
+              <Input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="••••••••" className="h-11 rounded-[10px] border-gray-200" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="font-medium text-indigo-950 text-sm">New Password</Label>
-              <Input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="••••••••" className="h-11 rounded-[10px] border-gray-200" />
+              <Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="••••••••" className="h-11 rounded-[10px] border-gray-200" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="font-medium text-indigo-950 text-sm">Confirm New Password</Label>
-              <Input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" className="h-11 rounded-[10px] border-gray-200" />
+              <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="••••••••" className="h-11 rounded-[10px] border-gray-200" />
             </div>
             {pwError && <p className="text-red-500 text-xs">{pwError}</p>}
             {pwSuccess && <p className="text-emerald-500 text-xs">✓ Password updated successfully!</p>}
             <div className="flex justify-end mt-1">
-              <Button onClick={handleChangePassword} className="h-10 px-5 rounded-[10px] border-0 bg-emerald-500 hover:bg-emerald-600 font-semibold text-sm">Update Password</Button>
+              <Button type="button" onClick={handleChangePassword} className="h-10 px-5 rounded-[10px] border-0 bg-emerald-500 hover:bg-emerald-600 font-semibold text-sm">
+                Update Password
+              </Button>
             </div>
           </div>
         </Section>
@@ -258,14 +280,18 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
                   <p className="font-medium text-indigo-950 text-sm">Clear All Data</p>
                   <p className="text-[#6a7282] text-xs mt-0.5">Delete all groups and expenses permanently</p>
                 </div>
-                <button className="h-9 px-4 rounded-[10px] border border-red-200 bg-white text-red-500 hover:bg-red-50 transition-colors font-medium text-sm">Clear Data</button>
+                <button type="button" className="h-9 px-4 rounded-[10px] border border-red-200 bg-white text-red-500 hover:bg-red-50 transition-colors font-medium text-sm">
+                  Clear Data
+                </button>
               </div>
               <div className="flex items-center justify-between py-2">
                 <div>
                   <p className="font-medium text-indigo-950 text-sm">Delete Account</p>
                   <p className="text-[#6a7282] text-xs mt-0.5">Permanently remove your account and all associated data</p>
                 </div>
-                <button className="h-9 px-4 rounded-[10px] bg-red-500 hover:bg-red-600 text-white transition-colors font-medium text-sm">Delete Account</button>
+                <button type="button" className="h-9 px-4 rounded-[10px] bg-red-500 hover:bg-red-600 text-white transition-colors font-medium text-sm">
+                  Delete Account
+                </button>
               </div>
             </div>
           </CardContent>
@@ -275,11 +301,11 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav }) => {
   );
 };
 
-
 export const CreateGroup = () => {
   const { user: authUser } = useAuth();
   const { groupId, expenseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [activePage, setActivePage] = useState("dashboard");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
@@ -290,10 +316,10 @@ export const CreateGroup = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [user, setUser] = useState({
-    id: authUser.sub,
-    name: authUser?.getFullName() || "User",
+    id: authUser?.sub,
+    name: authUser?.getFullName?.() || "User",
     email: authUser?.email || "",
-    initials: authUser?.first_name?.[0] + (authUser?.last_name?.[0] || "") || "U",
+    initials: (authUser?.first_name?.[0] || "") + (authUser?.last_name?.[0] || "") || "U",
   });
 
   useEffect(() => {
@@ -301,8 +327,31 @@ export const CreateGroup = () => {
   }, []);
 
   useEffect(() => {
+    const { pathname } = location;
+    if (pathname === "/virtual-card") {
+      setSelectedGroup(null);
+      setActivePage("virtual-card");
+      return;
+    }
+    if (pathname === "/settings") {
+      setSelectedGroup(null);
+      setActivePage("settings");
+      return;
+    }
+    if (pathname === "/dashboard") {
+      setSelectedGroup(null);
+      setActivePage("dashboard");
+      return;
+    }
+    if (pathname === "/groups" || pathname === "/create") {
+      setSelectedGroup(null);
+      setActivePage("groups");
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
     if (groupId && groups.length > 0) {
-      const group = groups.find(g => g.id === parseInt(groupId));
+      const group = groups.find((g) => g.id === parseInt(groupId, 10));
       if (group) {
         setSelectedGroup(group);
         setActivePage("groups");
@@ -353,7 +402,7 @@ export const CreateGroup = () => {
 
       setGroups(groupsWithMembers);
     } catch (error) {
-      console.error('Failed to load groups:', error);
+      console.error("Failed to load groups:", error);
     } finally {
       setIsLoadingGroups(false);
     }
@@ -383,16 +432,14 @@ export const CreateGroup = () => {
       invitation_link: updatedGroup.invitation_link,
     };
 
-    setGroups(prev => prev.map(g => g.id === updatedGroup.id ? mappedGroup : g));
+    setGroups((prev) => prev.map((g) => (g.id === updatedGroup.id ? mappedGroup : g)));
     setSelectedGroup(mappedGroup);
   };
 
   const loadGroupExpenses = useCallback(async (group) => {
     try {
       const fetched = await groupApi.getGroupExpenses(group.id);
-      const normalized = (Array.isArray(fetched) ? fetched : []).map((expense) =>
-        normalizeGroupExpense(expense, group, group.members || [])
-      );
+      const normalized = (Array.isArray(fetched) ? fetched : []).map((expense) => normalizeGroupExpense(expense, group, group.members || []));
       setAllExpenses((prev) => ({ ...prev, [group.id]: normalized }));
     } catch (error) {
       console.error(`Failed to load expenses for group ${group.id}:`, error);
@@ -414,17 +461,13 @@ export const CreateGroup = () => {
     const normalized = normalizeGroupExpense(updatedExpense, selectedGroup, selectedGroup?.members || []);
     setAllExpenses((prev) => ({
       ...prev,
-      [selectedGroup.id]: (prev[selectedGroup.id] || []).map((expense) =>
-        expense.id === normalized.id ? { ...expense, ...normalized } : expense
-      ),
+      [selectedGroup.id]: (prev[selectedGroup.id] || []).map((expense) => (expense.id === normalized.id ? { ...expense, ...normalized } : expense)),
     }));
   };
 
   if (selectedGroup) {
     const selectedGroupExpenses = allExpenses[selectedGroup?.id] ?? [];
-    const selectedExpense = expenseId
-      ? selectedGroupExpenses.find((expense) => expense.id === Number(expenseId))
-      : null;
+    const selectedExpense = expenseId ? selectedGroupExpenses.find((expense) => expense.id === Number(expenseId)) : null;
 
     if (expenseId && selectedExpense) {
       return (
@@ -437,7 +480,7 @@ export const CreateGroup = () => {
           onGroupNav={(page) => {
             setSelectedGroup(null);
             setActivePage(page);
-            navigate(`/${page}`);
+            navigate(pathForSidebarNav(page));
           }}
           onExpenseUpdated={handleExpenseUpdated}
         />
@@ -450,24 +493,25 @@ export const CreateGroup = () => {
         groups={groups}
         user={user}
         expenses={selectedGroupExpenses}
-        onExpensesChange={(updated) => setAllExpenses(prev => ({ ...prev, [selectedGroup.id]: updated }))}
+        onExpensesChange={(updated) => setAllExpenses((prev) => ({ ...prev, [selectedGroup.id]: updated }))}
         onBack={() => {
           setSelectedGroup(null);
-          navigate('/groups');
+          navigate("/groups");
         }}
         onNavChange={(page) => {
           setSelectedGroup(null);
           setActivePage(page);
-          navigate(`/${page}`);
+          navigate(pathForSidebarNav(page));
         }}
         onGroupUpdated={handleGroupUpdated}
         onOpenExpense={handleOpenExpense}
       />
     );
   }
-  const allExpensesList = Object.entries(allExpenses).flatMap(([groupId, exps]) => {
-    const group = groups.find(g => g.id === Number(groupId));
-    return exps.map(e => ({ ...e, group }));
+
+  const allExpensesList = Object.entries(allExpenses).flatMap(([gid, exps]) => {
+    const group = groups.find((g) => g.id === Number(gid));
+    return exps.map((e) => ({ ...e, group }));
   });
 
   const totalSplits = allExpensesList.reduce((s, e) => s + e.amount, 0);
@@ -492,22 +536,29 @@ export const CreateGroup = () => {
 
   if (activePage === "virtual-card") {
     return (
-        <VirtualCardPage
-            user={user}
-            groups={groups}
-            onNavChange={(page) => {
-              setActivePage(page);
-              navigate(`/${page}`);
-            }}
-        />
+      <VirtualCardPage
+        user={user}
+        groups={groups}
+        onNavChange={(page) => {
+          setActivePage(page);
+          navigate(pathForSidebarNav(page));
+        }}
+      />
     );
   }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden [font-family:'Outfit',Helvetica]">
-      {/* Sidebar скрыт на мобильных, показывается на lg+ */}
       <div className="hidden lg:block">
-        <Sidebar activeNav={activePage} onNavChange={setActivePage} groupCount={groups.length} user={user} />
+        <Sidebar
+          activeNav={activePage}
+          onNavChange={(page) => {
+            setActivePage(page);
+            navigate(pathForSidebarNav(page));
+          }}
+          groupCount={groups.length}
+          user={user}
+        />
       </div>
 
       {mobileNavOpen && (
@@ -534,6 +585,7 @@ export const CreateGroup = () => {
               {[
                 { id: "dashboard", label: "Dashboard" },
                 { id: "groups", label: "Groups" },
+                { id: "virtual-card", label: "Virtual Card" },
                 { id: "settings", label: "Settings" },
               ].map((item) => (
                 <button
@@ -541,6 +593,7 @@ export const CreateGroup = () => {
                   type="button"
                   onClick={() => {
                     setActivePage(item.id);
+                    navigate(pathForSidebarNav(item.id));
                     setMobileNavOpen(false);
                   }}
                   className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium ${
@@ -585,7 +638,11 @@ export const CreateGroup = () => {
                 <p className="text-xs sm:text-sm text-[#99a1af]">Welcome back, {user?.name}</p>
               </div>
               {groups.length > 0 && (
-                <Button onClick={() => setCreateGroupOpen(true)} className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold">
+                <Button
+                  type="button"
+                  onClick={() => setCreateGroupOpen(true)}
+                  className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold"
+                >
                   + New Group
                 </Button>
               )}
@@ -595,9 +652,24 @@ export const CreateGroup = () => {
               <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {[
-                    { label: "Total Splits", value: `${currencySymbol}${totalSplits.toFixed(2)}`, sub: allExpensesList.length > 0 ? `${allExpensesList.length} expense${allExpensesList.length !== 1 ? "s" : ""}` : "No activity yet", color: "text-indigo-600" },
-                    { label: "You Owe", value: `${currencySymbol}${youOwe.toFixed(2)}`, sub: youOwe === 0 ? "All clear" : "Across all groups", color: "text-rose-500" },
-                    { label: "Owed to You", value: `${currencySymbol}${owedToYou.toFixed(2)}`, sub: owedToYou === 0 ? "No pending" : "Across all groups", color: "text-emerald-500" },
+                    {
+                      label: "Total Splits",
+                      value: `${currencySymbol}${totalSplits.toFixed(2)}`,
+                      sub: allExpensesList.length > 0 ? `${allExpensesList.length} expense${allExpensesList.length !== 1 ? "s" : ""}` : "No activity yet",
+                      color: "text-indigo-600",
+                    },
+                    {
+                      label: "You Owe",
+                      value: `${currencySymbol}${youOwe.toFixed(2)}`,
+                      sub: youOwe === 0 ? "All clear" : "Across all groups",
+                      color: "text-rose-500",
+                    },
+                    {
+                      label: "Owed to You",
+                      value: `${currencySymbol}${owedToYou.toFixed(2)}`,
+                      sub: owedToYou === 0 ? "No pending" : "Across all groups",
+                      color: "text-emerald-500",
+                    },
                   ].map((s) => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 px-6 py-5 shadow-sm flex flex-col gap-1">
                       <span className="text-sm text-[#99a1af]">{s.label}</span>
@@ -609,9 +681,7 @@ export const CreateGroup = () => {
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm w-full">
                   <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="font-semibold text-[#101828] text-base">Recent Bills</h2>
-                    {allExpensesList.length > 0 && (
-                      <span className="text-xs text-[#99a1af]">{allExpensesList.length} total</span>
-                    )}
+                    {allExpensesList.length > 0 && <span className="text-xs text-[#99a1af]">{allExpensesList.length} total</span>}
                   </div>
                   {allExpensesList.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
@@ -623,9 +693,7 @@ export const CreateGroup = () => {
                     <div className="flex flex-col divide-y divide-gray-50">
                       {allExpensesList.slice(0, 10).map((exp) => (
                         <div key={exp.id} className="flex items-center gap-3.5 px-6 py-4">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-xl">
-                            {exp.categoryEmoji}
-                          </div>
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-xl">{exp.categoryEmoji}</div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold text-[#101828]">{exp.title}</p>
                             <p className="text-xs text-[#99a1af]">
@@ -633,7 +701,10 @@ export const CreateGroup = () => {
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-[#101828]">{currencySymbol}{exp.amount.toFixed(2)}</p>
+                            <p className="text-sm font-bold text-[#101828]">
+                              {currencySymbol}
+                              {exp.amount.toFixed(2)}
+                            </p>
                             <p className="text-xs text-[#99a1af]">{exp.category}</p>
                           </div>
                         </div>
@@ -641,9 +712,7 @@ export const CreateGroup = () => {
                     </div>
                   )}
                 </div>
-                  
-                </div>
-              
+              </div>
             )}
 
             {activePage === "groups" && (
@@ -651,7 +720,9 @@ export const CreateGroup = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl font-bold text-[#101828]">My groups</h2>
-                    <p className="text-sm text-[#99a1af] mt-0.5">{groups.length} group{groups.length !== 1 ? "s" : ""}</p>
+                    <p className="text-sm text-[#99a1af] mt-0.5">
+                      {groups.length} group{groups.length !== 1 ? "s" : ""}
+                    </p>
                   </div>
                 </div>
 
@@ -660,7 +731,11 @@ export const CreateGroup = () => {
                     <div className="text-5xl">📁</div>
                     <p className="font-semibold text-[#101828] text-lg">No groups yet</p>
                     <p className="text-sm text-[#99a1af] max-w-xs">Create your first group to start splitting bills with friends</p>
-                    <Button onClick={() => setCreateGroupOpen(true)} className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold mt-2">
+                    <Button
+                      type="button"
+                      onClick={() => setCreateGroupOpen(true)}
+                      className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white text-sm font-semibold mt-2"
+                    >
                       + Create group
                     </Button>
                   </div>
@@ -676,18 +751,23 @@ export const CreateGroup = () => {
                         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-md transition-shadow cursor-pointer"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-xl shrink-0"></div>
+                          <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-xl shrink-0" />
                           <span className="text-xs font-medium bg-gray-100 text-[#6a7282] rounded-full px-2.5 py-1 mt-0.5">{group.currency.split("–")[0].trim()}</span>
                         </div>
                         <div>
                           <p className="font-semibold text-[#101828] text-base">{group.title}</p>
-                          <p className="text-sm text-[#6a7282] mt-1">{group.participants.length} member{group.participants.length !== 1 ? "s" : ""}</p>
+                          <p className="text-sm text-[#6a7282] mt-1">
+                            {group.participants.length} member{group.participants.length !== 1 ? "s" : ""}
+                          </p>
                         </div>
-                        <div className="flex items-center justify-between border-t border-gray-50 pt-3">
-                        </div>
+                        <div className="flex items-center justify-between border-t border-gray-50 pt-3" />
                       </div>
                     ))}
-                    <button onClick={() => setCreateGroupOpen(true)} className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 flex flex-col items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all cursor-pointer min-h-[180px] group">
+                    <button
+                      type="button"
+                      onClick={() => setCreateGroupOpen(true)}
+                      className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 flex flex-col items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all cursor-pointer min-h-[180px] group"
+                    >
                       <div className="w-11 h-11 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center text-indigo-400 text-2xl transition-colors">+</div>
                       <span className="font-medium text-[#99a1af] group-hover:text-indigo-500 text-sm transition-colors">Create group</span>
                     </button>
@@ -698,12 +778,7 @@ export const CreateGroup = () => {
           </>
         )}
 
-        {createGroupOpen && (
-          <CreateGroupModal 
-            onClose={() => setCreateGroupOpen(false)} 
-            onGroupCreated={handleCreateGroup}
-          />
-        )}
+        {createGroupOpen && <CreateGroupModal onClose={() => setCreateGroupOpen(false)} onGroupCreated={handleCreateGroup} />}
       </main>
     </div>
   );

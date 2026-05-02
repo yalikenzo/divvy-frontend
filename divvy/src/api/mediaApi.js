@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 
-const baseURL = process.env.BACKEND_DOMAIN || 'http://localhost:8001';
+const baseURL = process.env.REACT_APP_BACKEND_DOMAIN;
 
 const getToken = () => localStorage.getItem('access_token');
 

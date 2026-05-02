@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { CreateGroupPayload, Group, UpdateGroupPayload, InviteToGroupPayload, UserGroup } from '../types/group';
+import { Group, UserGroup } from '../types/group';
 
 export const groupApi = {
   async createGroup(payload) {
@@ -41,7 +41,7 @@ export const groupApi = {
   },
 
   async scanReceipt(groupId, files, expenseId = null) {
-    const baseURL = process.env.BACKEND_DOMAIN || 'http://localhost:8001';
+    const baseURL = process.env.REACT_APP_BACKEND_DOMAIN;
     const params = new URLSearchParams({ group_id: String(groupId) });
     if (expenseId !== null && expenseId !== undefined) {
       params.append('expense_id', String(expenseId));

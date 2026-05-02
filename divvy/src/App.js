@@ -1,19 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
-import Create from './CreatingNewGroup';
-import img2 from './img2.png';
-import img3 from './img3.png';
-import img1 from './img1.jpg';
-import img4 from './img4.jpg';
-import img5 from './img5.jpg';
-import vector1 from './dollar.svg';
-import logo from './divvylogo.svg';
-import { CreateGroup } from './CreatingNewGroup';
+import img2 from './imgs/img2.png';
+import img3 from './imgs/img3.png';
+import img5 from './imgs/img5.jpg';
+import logo from './imgs/divvylogo.svg';
+import { CreateGroup } from './components/groups/CreatingNewGroup';
 import { AuthProvider } from './context/AuthContext';
-import { RegisterForm } from './components/Auth/RegisterForm';
-import { LoginForm } from './components/Auth/LoginForm';
-import { GoogleCallback } from './components/Auth/GoogleCallback';
+import { RegisterForm } from './components/auth/RegisterForm';
+import { LoginForm } from './components/auth/LoginForm';
+import { GoogleCallback } from './components/auth/GoogleCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authApi } from './api/authApi';
 
@@ -56,6 +52,16 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/create" element={
+            <ProtectedRoute>
+              <CreateGroup />
+            </ProtectedRoute>
+          } />
+          <Route path="/virtual-card" element={
+            <ProtectedRoute>
+              <CreateGroup />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
             <ProtectedRoute>
               <CreateGroup />
             </ProtectedRoute>

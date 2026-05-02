@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sidebar } from "../../CreatingNewGroup";
+import { Sidebar } from "./CreatingNewGroup";
 import { groupApi } from "../../api/groupApi";
 import { currencySymbolFromGroup } from "../../utils/groupExpenseMapper";
 
