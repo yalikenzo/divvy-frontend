@@ -5,7 +5,7 @@ import img2 from './imgs/img2.png';
 import img3 from './imgs/img3.png';
 import img5 from './imgs/img5.jpg';
 import logo from './imgs/divvylogo.svg';
-import { CreateGroup } from './components/groups/CreatingNewGroup';
+import { CreateGroup } from './components/Groups/CreatingNewGroup';
 import { AuthProvider } from './context/AuthContext';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { LoginForm } from './components/auth/LoginForm';
