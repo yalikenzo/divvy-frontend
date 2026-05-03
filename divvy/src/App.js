@@ -382,13 +382,22 @@ const Homepage = () => {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
   const navigate = useNavigate();
+
+  const openAppOrSignUpModal = () => {
+    if (localStorage.getItem('access_token')) {
+      navigate('/dashboard');
+      return;
+    }
+    setShowSignUp(true);
+  };
+
   return (
     <main className="w-full bg-white overflow-x-hidden">
 
       {/* Sign Up Modal */}
       {showSignUp && <SignUpModal onClose={() => setShowSignUp(false)} />}
 
-      <Header onGetStarted={() => setShowSignUp(true)} />
+      <Header onGetStarted={openAppOrSignUpModal} />
 
       {/* Hero Section */}
       <section className="w-full bg-gradient-to-b from-indigo-600 via-indigo-500 to-emerald-500 px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
@@ -412,7 +421,7 @@ const Homepage = () => {
                 border_border_radius="rounded-full"
                 padding="py-4 px-8"
                 className="font-[Helvetica] text-lg w-full sm:w-auto"
-                onClick={() => setShowSignUp(true)}
+                onClick={openAppOrSignUpModal}
               />
               <Button
                 text="Watch Demo"

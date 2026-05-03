@@ -4,6 +4,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Sidebar } from "./CreatingNewGroup";
+import { MobileBrandAndLogout } from "../MobileBrandAndLogout";
 import { GroupSettingsModal } from "./GroupSettingsModal";
 import { groupApi } from "../../api/groupApi";
 import { virtualCardApi } from "../../api/virtualCardApi";
@@ -1625,6 +1626,7 @@ const GroupDetailPage = ({ group, groups = [], user, expenses, onExpensesChange,
         />
       </div>
       <main className="flex-1 overflow-y-auto">
+        <MobileBrandAndLogout />
         <SectionErrorBoundary onRetry={() => onBack?.()}>
           <ExpenseOverviewSection group={group} expenses={expenses} onExpensesChange={onExpensesChange} onBack={onBack} onNavChange={onNavChange} onGroupUpdated={onGroupUpdated} user={user} />
         </SectionErrorBoundary>

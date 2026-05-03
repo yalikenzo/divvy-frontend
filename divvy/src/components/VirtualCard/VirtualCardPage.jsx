@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { virtualCardApi } from "../../api/virtualCardApi";
 import { Sidebar } from "../Groups/CreatingNewGroup";
+import { MobileBrandAndLogout } from "../MobileBrandAndLogout";
 
 const SUPPORTED_CURRENCIES = ["USD", "EUR", "KZT", "JPY", "CNY", "RUB"];
 
@@ -140,6 +141,7 @@ export const VirtualCardPage = ({ user, groups = [], onNavChange }) => {
             </div>
 
             <main className="flex-1 overflow-y-auto">
+                <MobileBrandAndLogout />
                 <div className="mx-auto w-full max-w-2xl px-4 sm:px-8 py-6 sm:py-8">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">

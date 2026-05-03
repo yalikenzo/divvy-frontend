@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sidebar } from "./CreatingNewGroup";
+import { MobileBrandAndLogout } from "../MobileBrandAndLogout";
 import { groupApi } from "../../api/groupApi";
 import { currencySymbolFromGroup } from "../../utils/groupExpenseMapper";
 
@@ -343,8 +344,11 @@ export const GroupExpenseDetailsPage = ({
           <div className="hidden lg:block">
             <Sidebar activeNav="groups" onNavChange={onGroupNav} groupCount={groups.length} user={user} />
           </div>
-          <main className="flex-1 flex items-center justify-center">
-            <p className="text-gray-400">Loading expense…</p>
+          <main className="flex flex-1 flex-col overflow-y-auto">
+            <MobileBrandAndLogout />
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-gray-400">Loading expense…</p>
+            </div>
           </main>
         </div>
     );
@@ -357,6 +361,7 @@ export const GroupExpenseDetailsPage = ({
         </div>
 
         <main className="flex-1 overflow-y-auto">
+          <MobileBrandAndLogout />
           <section className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-6 sm:py-8 text-[#101828]">
             {/* Header */}
             <div className="flex items-center justify-between">
