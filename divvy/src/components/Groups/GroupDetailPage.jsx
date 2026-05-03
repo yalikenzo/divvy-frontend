@@ -1394,7 +1394,6 @@ const BalancesContent = ({ group, user }) => {
                   <span className="text-sm font-semibold text-red-500">-{currencySymbol}{amt.toFixed(2)}</span>
                   <button type="button"
                     onClick={(e) => { e.stopPropagation(); setPayModal({ toUserId, toUserName, amount: amt, splitId }); }}
-                    disabled={!splitId}
                     className="text-[11px] px-3 py-1.5 rounded-full bg-indigo-950 text-white font-semibold hover:bg-indigo-900 transition-colors whitespace-nowrap">
                     Pay
                   </button>
