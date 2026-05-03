@@ -143,7 +143,30 @@ const Toggle = ({ checked, onChange, label, description }) => (
   </div>
 );
 
+const GROUP_GRADIENTS = [
+  "linear-gradient(135deg,rgba(245,158,11,1) 0%,rgba(239,68,68,1) 50%,rgba(124,58,237,1) 100%)",
+  "linear-gradient(135deg,rgba(79,70,229,1) 0%,rgba(16,185,129,1) 100%)",
+  "linear-gradient(135deg,rgba(236,72,153,1) 0%,rgba(239,68,68,1) 100%)",
+  "linear-gradient(135deg,rgba(16,185,129,1) 0%,rgba(59,130,246,1) 100%)",
+  "linear-gradient(135deg,rgba(245,158,11,1) 0%,rgba(16,185,129,1) 100%)",
+];
+const getGroupGradient = (g) => GROUP_GRADIENTS[(g?.id ?? 0) % GROUP_GRADIENTS.length];
+
+function getAuthProvider() {
+  try {
+    const token =
+      localStorage.getItem("access_token") ||
+      sessionStorage.getItem("access_token");
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload?.auth_provider || null;
+  } catch {
+    return null;
+  }
+}
+
 const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, onProfilePersist }) => {
+  const isGoogleAuth = getAuthProvider() === "google";
   const [firstName, setFirstName] = useState(user?.first_name || user?.name?.split(" ")[0] || "");
   const [lastName, setLastName] = useState(
     user?.last_name || (user?.name || "").split(" ").slice(1).join(" ")
@@ -322,7 +345,7 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, o
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="font-medium text-indigo-950 text-sm">Email Address</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-[10px] border-gray-200" />
+              <Input type="email" value={email} readOnly disabled className="h-11 rounded-[10px] border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" />
             </div>
             {profileError && <p className="text-red-500 text-xs">{profileError}</p>}
             <div className="flex justify-end mt-1">
@@ -382,6 +405,7 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, o
           </div>
         </Section>
 
+        {!isGoogleAuth && (
         <Section title="Security" description="Manage your password and account security">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
@@ -414,6 +438,7 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, o
             </div>
           </div>
         </Section>
+        )}
 
         <Card className="bg-white rounded-[14px] border border-red-100 w-full">
           <CardContent className="p-0">
@@ -1136,7 +1161,7 @@ export const CreateGroup = () => {
                         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-md transition-shadow cursor-pointer"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-xl shrink-0" />
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: getGroupGradient(group) }} />
                           <span className="text-xs font-medium bg-gray-100 text-[#6a7282] rounded-full px-2.5 py-1 mt-0.5">{group.currency.split("–")[0].trim()}</span>
                         </div>
                         <div>
