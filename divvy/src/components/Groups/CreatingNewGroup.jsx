@@ -75,11 +75,10 @@ export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => {
             key={item.id}
             type="button"
             onClick={() => onNavChange(item.id)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left w-full ${
-              activeNav === item.id
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left w-full ${activeNav === item.id
                 ? "bg-indigo-50 text-indigo-600"
                 : "text-[#4a5565] hover:bg-gray-50 hover:text-[#101828]"
-            }`}
+              }`}
           >
             <span className="text-base w-5 text-center">{item.icon}</span>
             <span className="flex-1">{item.label}</span>
@@ -138,13 +137,11 @@ const Toggle = ({ checked, onChange, label, description }) => (
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-        checked ? "bg-emerald-500" : "bg-gray-200"
-      }`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${checked ? "bg-emerald-500" : "bg-gray-200"
+        }`}
     >
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-        checked ? "translate-x-6" : "translate-x-1"
-      }`} />
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-6" : "translate-x-1"
+        }`} />
     </button>
   </div>
 );
@@ -355,13 +352,12 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, o
                 type="button"
                 onClick={handleSaveProfile}
                 disabled={!hasProfileChanges || isSavingProfile}
-                className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${
-                  !hasProfileChanges || isSavingProfile
+                className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${!hasProfileChanges || isSavingProfile
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : profileSaved
-                    ? "bg-emerald-400"
-                    : "bg-emerald-500 hover:bg-emerald-600"
-                }`}
+                      ? "bg-emerald-400"
+                      : "bg-emerald-500 hover:bg-emerald-600"
+                  }`}
               >
                 {isSavingProfile ? "Saving..." : profileSaved ? "✓ Saved!" : "Save the Changes"}
               </Button>
@@ -429,11 +425,10 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, o
                   type="button"
                   onClick={handleChangePassword}
                   disabled={isChangingPassword}
-                  className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${
-                    isChangingPassword
+                  className={`h-10 px-5 rounded-[10px] border-0 font-semibold text-sm ${isChangingPassword
                       ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                       : "bg-emerald-500 hover:bg-emerald-600"
-                  }`}
+                    }`}
                 >
                   {isChangingPassword ? "Updating..." : "Update Password"}
                 </Button>
@@ -467,9 +462,8 @@ const SettingsPage = ({ user, onUserChange, onOpenMobileNav, onAccountDeleted, o
                   type="button"
                   onClick={handleDeleteAccount}
                   disabled={isDeletingAccount}
-                  className={`h-9 px-4 rounded-[10px] text-white transition-colors font-medium  text-sm ${
-                    isDeletingAccount ? "bg-red-300 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
-                  }`}
+                  className={`h-9 px-4 rounded-[10px] text-white transition-colors font-medium  text-sm ${isDeletingAccount ? "bg-red-300 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
+                    }`}
                 >
                   {isDeletingAccount ? "Deleting..." : "Delete Account"}
                 </button>
@@ -498,7 +492,7 @@ export const CreateGroup = () => {
   const [analyticsFilter, setAnalyticsFilter] = useState("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-  
+
   // Currency conversion state for analytics
   const [usdConversionRates, setUsdConversionRates] = useState({});
   const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
@@ -672,7 +666,7 @@ export const CreateGroup = () => {
   const loadGroupExpenses = useCallback(async (group) => {
     try {
       const fetched = await groupApi.getGroupExpenses(group.id);
-      const normalized = (Array.isArray(fetched) ? fetched : []).map((expense) => 
+      const normalized = (Array.isArray(fetched) ? fetched : []).map((expense) =>
         normalizeGroupExpense(expense, group, group.members || [])
       );
       setAllExpenses((prev) => ({ ...prev, [group.id]: normalized }));
@@ -703,13 +697,13 @@ export const CreateGroup = () => {
   useEffect(() => {
     const fetchConversionRates = async () => {
       if (activePage !== "dashboard") return;
-      
+
       setIsConvertingCurrency(true);
       const rates = {};
       const currencies = [...new Set(
         Object.values(allExpenses).flat().map((e) => e.currency).filter(Boolean)
       )];
-      
+
       for (const currency of currencies) {
         if (currency !== "USD") {
           try {
@@ -726,7 +720,7 @@ export const CreateGroup = () => {
       setUsdConversionRates(rates);
       setIsConvertingCurrency(false);
     };
-    
+
     fetchConversionRates();
   }, [activePage, allExpenses]);
 
@@ -747,7 +741,7 @@ export const CreateGroup = () => {
   if (selectedGroup) {
     const selectedGroupExpenses = allExpenses[selectedGroup?.id] ?? [];
     const selectedExpense = expenseId ? selectedGroupExpenses.find((expense) => expense.id === Number(expenseId)) : null;
-    
+
     if (expenseId && selectedExpense) {
       return (
         <GroupExpenseDetailsPage
@@ -812,9 +806,9 @@ export const CreateGroup = () => {
       const expenseCurrency = e.currency || "USD";
       const rate = usdConversionRates[expenseCurrency] || 1;
       const amountInUSD = e.amount * rate;
-      
+
       totalSplitsUSD += amountInUSD;
-      
+
       if (e.group) {
         const members = e.group.participants.length;
         const shareInUSD = amountInUSD / members;
@@ -825,7 +819,7 @@ export const CreateGroup = () => {
         }
       }
     }
-    
+
     return { totalSplitsUSD, youOweUSD, owedToYouUSD };
   };
 
@@ -835,7 +829,7 @@ export const CreateGroup = () => {
     return new Date(y, m - 1, d);
   };
   const dateOnly = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  
+
   const filterExpenseByDate = (expense) => {
     if (analyticsFilter === "all") return true;
     const rawDate = expense.rawDate || expense.created_at || expense.date;
@@ -844,7 +838,7 @@ export const CreateGroup = () => {
     if (isNaN(d.getTime())) return true;
     const dDay = dateOnly(d);
     const now = new Date();
-    
+
     if (analyticsFilter === "week") {
       const from = new Date(now);
       from.setDate(now.getDate() - 7);
@@ -862,23 +856,56 @@ export const CreateGroup = () => {
     }
     return true;
   };
-  useEffect(() => {
-    const updateAnalytics = async () => {
-      const { totalSplitsUSD, youOweUSD, owedToYouUSD } = await calculateAnalyticsInUSD(
-        allExpensesList, 
-        filterExpenseByDate
+  if (selectedGroup) {
+    const selectedGroupExpenses = allExpenses[selectedGroup?.id] ?? [];
+    const selectedExpense = expenseId
+      ? selectedGroupExpenses.find((expense) => expense.id === Number(expenseId))
+      : null;
+
+    if (expenseId && selectedExpense) {
+      return (
+        <GroupExpenseDetailsPage
+          group={selectedGroup}
+          groups={groups}
+          user={user}
+          expense={selectedExpense}
+          onBack={() => navigate(`/groups/${selectedGroup.id}`)}
+          onGroupNav={(page) => {
+            setSelectedGroup(null);
+            setActivePage(page);
+            navigate(pathForSidebarNav(page));
+          }}
+          onExpenseUpdated={handleExpenseUpdated}
+        />
       );
-      setAnalyticsData({
-        totalSplits: totalSplitsUSD,
-        youOwe: youOweUSD,
-        owedToYou: owedToYouUSD,
-      });
-    };
-    
-    if (activePage === "dashboard") {
-      updateAnalytics();
     }
-  }, [activePage, allExpensesList, analyticsFilter, customFrom, customTo, usdConversionRates]);
+
+    return (
+      <GroupDetailPage
+        group={selectedGroup}
+        groups={groups}
+        user={user}
+        expenses={selectedGroupExpenses}
+        onExpensesChange={(updated) =>
+          setAllExpenses((prev) => ({
+            ...prev,
+            [selectedGroup.id]: updated,
+          }))
+        }
+        onBack={() => {
+          setSelectedGroup(null);
+          navigate("/groups");
+        }}
+        onNavChange={(page) => {
+          setSelectedGroup(null);
+          setActivePage(page);
+          navigate(pathForSidebarNav(page));
+        }}
+        onGroupUpdated={handleGroupUpdated}
+        onOpenExpense={handleOpenExpense}
+      />
+    );
+  }
 
   const filteredForAnalytics = allExpensesList.filter(filterExpenseByDate);
   const currencySymbol = "$"; // USD symbol for analytics
@@ -954,11 +981,10 @@ export const CreateGroup = () => {
                     navigate(pathForSidebarNav(item.id));
                     setMobileNavOpen(false);
                   }}
-                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium ${
-                    activePage === item.id
+                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium ${activePage === item.id
                       ? "bg-indigo-50 text-indigo-600"
                       : "text-[#4a5565] hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <span>{item.label}</span>
                   {item.id === "groups" && groups.length > 0 && (
@@ -1051,11 +1077,10 @@ export const CreateGroup = () => {
                         key={key}
                         type="button"
                         onClick={() => setAnalyticsFilter(key)}
-                        className={`h-8 px-4 rounded-full text-xs font-semibold transition-colors border ${
-                          analyticsFilter === key
+                        className={`h-8 px-4 rounded-full text-xs font-semibold transition-colors border ${analyticsFilter === key
                             ? "bg-indigo-600 text-white border-indigo-600"
                             : "bg-white text-[#4a5565] border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
-                        }`}
+                          }`}
                       >
                         {label}
                       </button>
@@ -1109,8 +1134,8 @@ export const CreateGroup = () => {
                     {
                       label: "Total Splits",
                       value: `${currencySymbol}${analyticsData.totalSplits.toFixed(2)}`,
-                      sub: filteredForAnalytics.length > 0 
-                        ? `${filteredForAnalytics.length} expense${filteredForAnalytics.length !== 1 ? "s" : ""}` 
+                      sub: filteredForAnalytics.length > 0
+                        ? `${filteredForAnalytics.length} expense${filteredForAnalytics.length !== 1 ? "s" : ""}`
                         : "No activity yet",
                       color: "text-indigo-600",
                     },
