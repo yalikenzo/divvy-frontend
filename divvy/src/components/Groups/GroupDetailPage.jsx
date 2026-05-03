@@ -1146,6 +1146,25 @@ const BalancesContent = ({ group, user }) => {
   const [showOwedDetails, setShowOwedDetails] = useState(false);
   const [showReceivableDetails, setShowReceivableDetails] = useState(false);
   const [payModal, setPayModal] = useState(null);
+  const [noCardToast, setNoCardToast] = useState(false);
+
+  const handlePayClick = useCallback(async (e, payload) => {
+    e.stopPropagation();
+    try {
+      const result = await virtualCardApi.getVirtualCard();
+      const cards = Array.isArray(result) ? result : [result].filter(Boolean);
+      if (cards.length === 0) {
+        setNoCardToast(true);
+        setTimeout(() => setNoCardToast(false), 4000);
+        return;
+      }
+    } catch {
+      setNoCardToast(true);
+      setTimeout(() => setNoCardToast(false), 4000);
+      return;
+    }
+    setPayModal(payload);
+  }, []);
 
   const currencySymbol = getCurrencySymbol(group?.currency);
   const currentUserId = Number(user?.id);
@@ -1393,7 +1412,7 @@ const BalancesContent = ({ group, user }) => {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-red-500">-{currencySymbol}{amt.toFixed(2)}</span>
                   <button type="button"
-                    onClick={(e) => { e.stopPropagation(); setPayModal({ toUserId, toUserName, amount: amt, splitId }); }}
+                    onClick={(e) => handlePayClick(e, { toUserId, toUserName, amount: amt, splitId })}
                     className="text-[11px] px-3 py-1.5 rounded-full bg-indigo-950 text-white font-semibold hover:bg-indigo-900 transition-colors whitespace-nowrap">
                     Pay
                   </button>
@@ -1489,6 +1508,16 @@ const BalancesContent = ({ group, user }) => {
         onPaid={handlePaid}
         group={group}
       />
+
+      {noCardToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 rounded-2xl bg-indigo-950 px-5 py-3.5 shadow-xl">
+          <span className="text-lg">&#128179;</span>
+          <div>
+            <p className="[font-family:'Outfit',Helvetica] text-sm font-semibold text-white">No virtual card found</p>
+            <p className="[font-family:'Outfit',Helvetica] text-xs text-indigo-300">Please create a card in the Cards section first</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
