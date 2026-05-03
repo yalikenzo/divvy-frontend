@@ -3,6 +3,37 @@ import { User } from '../types/auth';
 
 const BACKEND_DOMAIN = process.env.REACT_APP_BACKEND_DOMAIN;
 
+
+function resolveGoogleSpaCallbackPath() {
+  const explicitPath = process.env.REACT_APP_GOOGLE_REDIRECT_URL;
+  // const urlOrPath = process.env.REACT_APP_GOOGLE_REDIRECT_URL;
+  if (explicitPath) {
+    return explicitPath.startsWith('/') ? explicitPath : `/${explicitPath}`;
+  }
+  // if (urlOrPath) {
+  //   if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+  //     try {
+  //       const pathname = new URL(urlOrPath).pathname;
+  //       return pathname && pathname !== '/' ? pathname : '/auth/google/callback';
+  //     } catch {
+  //       return '/auth/google/callback';
+  //     }
+  //   }
+  //   return urlOrPath.startsWith('/') ? urlOrPath : `/${urlOrPath}`;
+  // }
+  return '/auth/google/callback';
+}
+
+function getFrontendGoogleRedirectUri() {
+  const path = resolveGoogleSpaCallbackPath();
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}${path}`;
+  }
+  const base = (process.env.REACT_APP_FRONTEND_DOMAIN || '').replace(/\/$/, '');
+  if (!base) return '';
+  return `${base}${path}`;
+}
+
 function parseJWT(token) {
   try {
     const base64Url = token.split('.')[1];
@@ -51,11 +82,16 @@ export const authApi = {
   },
 
   getGoogleLoginUrl() {
-    return `${BACKEND_DOMAIN}/auth/google/login`;
+    const base = `${BACKEND_DOMAIN}/auth/google/login`;
+    const redirectUri = getFrontendGoogleRedirectUri();
+    if (!redirectUri) return base;
+    return `${base}?${new URLSearchParams({ redirect_uri: redirectUri }).toString()}`;
   },
 
   async loginWithGoogleCode(code) {
-    const response = await apiClient.get(`/auth/google/complete?code=${encodeURIComponent(code)}`);
+    const response = await apiClient.get(
+      `/auth/google/complete?${new URLSearchParams({ code }).toString()}`
+    );
     saveTokenPair(response);
     return response;
   },

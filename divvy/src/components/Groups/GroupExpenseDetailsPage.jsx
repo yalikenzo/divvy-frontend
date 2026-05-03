@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sidebar } from "./CreatingNewGroup";
+import { MobileBrandAndLogout } from "../MobileBrandAndLogout";
 import { groupApi } from "../../api/groupApi";
 import { currencySymbolFromGroup } from "../../utils/groupExpenseMapper";
+import {
+  coerceSplitUserId,
+  expenseSplitHasMember,
+  normalizeGroupMembersForSplits,
+  participantIdLooksValid,
+} from "../../utils/groupMembers";
 
 const toNumber = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -26,14 +33,14 @@ const buildInitialItems = (expense, memberIds) => {
         idx
     );
     const splitUsers = Array.isArray(expense?.item_splits?.[splitKey])
-        ? expense.item_splits[splitKey].map(Number).filter((id) => Number.isFinite(id))
-        : Array.isArray(splitEntries[idx]?.[1])
-            ? splitEntries[idx][1].map(Number).filter((id) => Number.isFinite(id))
-            : memberIds;
+      ? expense.item_splits[splitKey].map((u) => coerceSplitUserId(u, null)).filter(participantIdLooksValid)
+      : Array.isArray(splitEntries[idx]?.[1])
+        ? splitEntries[idx][1].map((u) => coerceSplitUserId(u, null)).filter(participantIdLooksValid)
+        : memberIds;
 
     const assignedShares = {};
     memberIds.forEach((memberId) => {
-      assignedShares[memberId] = splitUsers.includes(memberId) ? 1 : 0;
+      assignedShares[memberId] = expenseSplitHasMember(splitUsers, memberId) ? 1 : 0;
     });
 
     return {
@@ -59,20 +66,7 @@ export const GroupExpenseDetailsPage = ({
                                         }) => {
   const currencySymbol = currencySymbolFromGroup(group);
 
-  const members = useMemo(
-      () =>
-          (group?.members || [])
-              .map((member) => ({
-                id: Number(member.id),
-                name:
-                    member.fullName ||
-                    [member.first_name, member.last_name].filter(Boolean).join(" ").trim() ||
-                    member.email ||
-                    "Member",
-              }))
-              .filter((member) => Number.isFinite(member.id)),
-      [group]
-  );
+  const members = useMemo(() => normalizeGroupMembersForSplits(group), [group]);
 
   /* ── Data / Form state ── */
   const [expense, setExpense] = useState(propExpense);
@@ -121,31 +115,29 @@ export const GroupExpenseDetailsPage = ({
 
     const memberIds = members.map((m) => m.id);
     const splitIds = Array.isArray(expense.expenses_split)
-        ? expense.expenses_split
-            .map((s) => Number(s.user_id))
-            .filter((id) => Number.isFinite(id))
+        ? expense.expenses_split.map((s) => coerceSplitUserId(s.user_id, null)).filter(participantIdLooksValid)
         : [];
     const activeIds = splitIds.length > 0 ? splitIds : memberIds;
     const builtItems = buildInitialItems(expense, activeIds);
 
     setExpenseName(expense.name || expense.title || "");
-    setPaidById(Number(expense.payer_id || members[0]?.id || 0));
+    setPaidById(coerceSplitUserId(expense.payer_id, members[0]?.id ?? 0));
     setShareType(expense.share_type || "EQUAL");
     setActiveMemberIds(activeIds);
     setItems(builtItems);
 
     setOriginalSnapshot({
       name: expense.name || expense.title || "",
-      payer_id: Number(expense.payer_id || 0),
+      payer_id: coerceSplitUserId(expense.payer_id, members[0]?.id ?? 0),
       share_type: expense.share_type || "EQUAL",
-      activeMemberIds: [...activeIds].sort((a, b) => a - b),
+      activeMemberIds: [...activeIds].sort((a, b) => String(a).localeCompare(String(b))),
       items: JSON.stringify(builtItems),
     });
     setUpdatedResponse(null);
   }, [expense, members]);
 
   /* ── Derived values ── */
-  const expenseMembers = activeMemberIds.filter((id) => Number.isFinite(id));
+  const expenseMembers = activeMemberIds.filter(participantIdLooksValid);
 
   const normalizedItems = useMemo(
       () =>
@@ -205,19 +197,21 @@ export const GroupExpenseDetailsPage = ({
 
   /* ── Handlers ── */
   const toggleMemberParticipation = (memberId) => {
-    const isActive = expenseMembers.includes(memberId);
+    const isActive = expenseSplitHasMember(expenseMembers, memberId);
     if (isActive) {
       if (expenseMembers.length <= 1) return;
-      const nextMembers = expenseMembers.filter((id) => id !== memberId);
+      const nextMembers = expenseMembers.filter((id) => String(id) !== String(memberId));
       setActiveMemberIds(nextMembers);
       setItems((prev) =>
           prev.map((item) => {
             const nextShares = { ...(item.assignedShares || {}) };
-            delete nextShares[memberId];
+            Object.keys(nextShares).forEach((k) => {
+              if (String(k) === String(memberId)) delete nextShares[k];
+            });
             return { ...item, assignedShares: nextShares };
           })
       );
-      if (paidById === memberId) setPaidById(nextMembers[0] || 0);
+      if (String(paidById) === String(memberId)) setPaidById(nextMembers[0] ?? 0);
       return;
     }
     const nextMembers = [...expenseMembers, memberId];
@@ -317,16 +311,14 @@ export const GroupExpenseDetailsPage = ({
 
       /* Reset snapshot so dirty becomes false */
       const newActiveIds = Array.isArray(updated.expenses_split)
-          ? updated.expenses_split
-              .map((s) => Number(s.user_id))
-              .filter((id) => Number.isFinite(id))
-          : expenseMembers;
+        ? updated.expenses_split.map((s) => coerceSplitUserId(s.user_id, null)).filter(participantIdLooksValid)
+        : expenseMembers;
       const newItems = buildInitialItems(updated, newActiveIds);
       setOriginalSnapshot({
         name: updated.name || "",
-        payer_id: Number(updated.payer_id || 0),
+        payer_id: coerceSplitUserId(updated.payer_id, members[0]?.id ?? 0),
         share_type: updated.share_type || "EQUAL",
-        activeMemberIds: [...newActiveIds].sort((a, b) => a - b),
+        activeMemberIds: [...newActiveIds].sort((a, b) => String(a).localeCompare(String(b))),
         items: JSON.stringify(newItems),
       });
       setExpense(updated);
@@ -343,8 +335,11 @@ export const GroupExpenseDetailsPage = ({
           <div className="hidden lg:block">
             <Sidebar activeNav="groups" onNavChange={onGroupNav} groupCount={groups.length} user={user} />
           </div>
-          <main className="flex-1 flex items-center justify-center">
-            <p className="text-gray-400">Loading expense…</p>
+          <main className="flex flex-1 flex-col overflow-y-auto">
+            <MobileBrandAndLogout />
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-gray-400">Loading expense…</p>
+            </div>
           </main>
         </div>
     );
@@ -357,6 +352,7 @@ export const GroupExpenseDetailsPage = ({
         </div>
 
         <main className="flex-1 overflow-y-auto">
+          <MobileBrandAndLogout />
           <section className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-6 sm:py-8 text-[#101828]">
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -384,14 +380,14 @@ export const GroupExpenseDetailsPage = ({
                   Paid By
                 </label>
                 <select
-                    value={paidById}
-                    onChange={(e) => setPaidById(Number(e.target.value))}
+                    value={String(paidById)}
+                    onChange={(e) => setPaidById(coerceSplitUserId(e.target.value, members[0]?.id ?? 0))}
                     className="h-11 w-full rounded-lg px-3 text-[#101828] border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 >
                   {members
-                      .filter((m) => expenseMembers.includes(m.id))
+                      .filter((m) => expenseSplitHasMember(expenseMembers, m.id))
                       .map((m) => (
-                          <option key={m.id} value={m.id}>
+                          <option key={String(m.id)} value={String(m.id)}>
                             {m.name}
                           </option>
                       ))}
@@ -485,9 +481,9 @@ export const GroupExpenseDetailsPage = ({
                     {shareType === "ITEMIZED" && (
                         <div className="mt-3 space-y-2">
                           {members
-                              .filter((member) => expenseMembers.includes(member.id))
+                              .filter((member) => expenseSplitHasMember(expenseMembers, member.id))
                               .map((member) => {
-                                const shares = item.assignedShares?.[member.id] || 0;
+                                const shares = item.assignedShares?.[member.id] ?? item.assignedShares?.[String(member.id)] ?? 0;
                                 const isPayingForItem = shares > 0;
                                 return (
                                     <div
@@ -579,20 +575,20 @@ export const GroupExpenseDetailsPage = ({
                             type="button"
                             onClick={() => toggleMemberParticipation(member.id)}
                             className={`h-5 w-5 rounded-full border flex items-center justify-center text-[11px] transition-colors ${
-                                expenseMembers.includes(member.id)
+                                expenseSplitHasMember(expenseMembers, member.id)
                                     ? "bg-emerald-500 border-emerald-500 text-white"
                                     : "bg-white border-gray-300 text-transparent"
                             }`}
                             aria-label={`${
-                                expenseMembers.includes(member.id) ? "Disable" : "Enable"
+                                expenseSplitHasMember(expenseMembers, member.id) ? "Disable" : "Enable"
                             } ${member.name} in expense`}
-                            disabled={expenseMembers.length <= 1 && expenseMembers.includes(member.id)}
+                            disabled={expenseMembers.length <= 1 && expenseSplitHasMember(expenseMembers, member.id)}
                         >
                           ✓
                         </button>
                         <span
                             className={`text-sm ${
-                                expenseMembers.includes(member.id) ? "text-[#101828]" : "text-gray-400"
+                                expenseSplitHasMember(expenseMembers, member.id) ? "text-[#101828]" : "text-gray-400"
                             }`}
                         >
                       {member.name}
@@ -600,11 +596,14 @@ export const GroupExpenseDetailsPage = ({
                       </div>
                       <span
                           className={`text-sm font-semibold ${
-                              expenseMembers.includes(member.id) ? "text-emerald-600" : "text-gray-400"
+                              expenseSplitHasMember(expenseMembers, member.id) ? "text-emerald-600" : "text-gray-400"
                           }`}
                       >
                     {currencySymbol}
-                        {(expenseMembers.includes(member.id) ? activeShares[member.id] || 0 : 0).toFixed(
+                        {(expenseSplitHasMember(expenseMembers, member.id)
+                            ? activeShares[member.id] ?? activeShares[String(member.id)] ?? 0
+                            : 0
+                        ).toFixed(
                             2
                         )}
                   </span>
@@ -675,7 +674,7 @@ export const GroupExpenseDetailsPage = ({
                               </p>
                               <div className="space-y-1.5">
                                 {updatedResponse.expenses_split.map((split, idx) => {
-                                  const member = members.find((m) => m.id === Number(split.user_id));
+                                  const member = members.find((m) => String(m.id) === String(split.user_id));
                                   return (
                                       <div
                                           key={idx}

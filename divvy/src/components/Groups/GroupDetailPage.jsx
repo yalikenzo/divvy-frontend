@@ -4,12 +4,19 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Sidebar } from "./CreatingNewGroup";
+import { MobileBrandAndLogout } from "../MobileBrandAndLogout";
 import { GroupSettingsModal } from "./GroupSettingsModal";
 import { groupApi } from "../../api/groupApi";
 import { virtualCardApi } from "../../api/virtualCardApi";
 import { useNavigate, useLocation } from "react-router-dom";
 import { normalizeGroupExpense } from "../../utils/groupExpenseMapper";
-import { MediaGallery } from "../media/MediaGallery";
+import {
+  coerceSplitUserId,
+  expenseSplitHasMember,
+  normalizeGroupMembersForSplits,
+  participantIdLooksValid,
+} from "../../utils/groupMembers";
+import { MediaGallery } from "../Media/MediaGallery";
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -65,7 +72,6 @@ const getCurrencySymbol = (currency) => {
   if (!currency) return "$";
   const c = String(currency).toUpperCase();
   if (c.includes("EUR")) return "€";
-  if (c.includes("GBP")) return "£";
   if (c.includes("JPY") || c.includes("CNY")) return "¥";
   if (c.includes("KZT")) return "₸";
   if (c.includes("RUB")) return "₽";
@@ -598,14 +604,7 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
   const location = useLocation();
   const isEditing = !!existingExpense;
 
-  const members = useMemo(() => {
-    try {
-      return (group?.members?.length ? group.members : (group?.participants ?? []).map((name, idx) => ({ id: idx + 1, fullName: name }))).map((member) => ({
-        id: Number(member.id),
-        name: member.fullName || [member.first_name, member.last_name].filter(Boolean).join(" ").trim() || member.email || "Member",
-      }));
-    } catch { return []; }
-  }, [group]);
+  const members = useMemo(() => normalizeGroupMembersForSplits(group), [group]);
 
   const [expenseName, setExpenseName] = useState("Expense");
   const [paidById, setPaidById] = useState(0);
@@ -632,7 +631,7 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     try {
       const d = existingExpense;
       setExpenseName(d.name || d.title || "Expense");
-      setPaidById(Number(d.payer_id) || members[0]?.id || 0);
+      setPaidById(coerceSplitUserId(d.payer_id, members[0]?.id ?? 0));
       const rawItems = Array.isArray(d.items) ? d.items : [];
       const rawItemSplits = (d.item_splits && typeof d.item_splits === "object") ? d.item_splits : {};
       if (rawItems.length > 0) {
@@ -644,42 +643,45 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
           return { id: Number(item.id) || Date.now() + idx, name: item.name || "Item", price: parseDecimal(item.price), quantity: Number(item.quantity || 1), assignedShares: shares };
         });
         setItems(mapped);
-        const userIds = Array.isArray(d.expenses_split) ? d.expenses_split.map((s) => Number(s.user_id)) : [];
-        setActiveMemberIds(userIds.length > 0 ? userIds.filter(Number.isFinite) : members.map((m) => m.id).filter(Number.isFinite));
+        const userIds = Array.isArray(d.expenses_split)
+          ? d.expenses_split.map((s) => coerceSplitUserId(s.user_id, null)).filter(participantIdLooksValid)
+          : [];
+        setActiveMemberIds(userIds.length > 0 ? userIds : members.map((m) => m.id));
       } else {
         setShareType("EQUAL");
         setItems([]);
-        setActiveMemberIds(members.map((m) => m.id).filter(Number.isFinite));
+        setActiveMemberIds(members.map((m) => m.id));
       }
     } catch (err) {
       console.error("Failed to populate edit form:", err);
       setError("Failed to load expense data for editing");
       setShareType("EQUAL");
       setItems([]);
-      setActiveMemberIds(members.map((m) => m.id).filter(Number.isFinite));
+      setActiveMemberIds(members.map((m) => m.id));
     }
-  }, [open]);
+  }, [open, isEditing, existingExpense]);
 
   useEffect(() => {
     if (!open || isEditing) return;
-    setPaidById(members[0]?.id || 0);
+    setPaidById(members[0]?.id ?? 0);
     try {
       const raw = sessionStorage.getItem(draftKey);
       if (raw) {
         const draft = JSON.parse(raw);
         setExpenseName(draft.expenseName || "Expense");
-        setPaidById(Number(draft.paidById || members[0]?.id || 0));
+        const restoredPayerId = coerceSplitUserId(draft.paidById, members[0]?.id ?? 0);
+        setPaidById(restoredPayerId || members[0]?.id || 0);
         setShareType(draft.shareType === "ITEMIZED" ? "ITEMIZED" : "EQUAL");
         setItems(Array.isArray(draft.items) ? draft.items : []);
         if (Array.isArray(draft.activeMemberIds) && draft.activeMemberIds.length > 0)
-          setActiveMemberIds(draft.activeMemberIds.map(Number).filter(Number.isFinite));
+          setActiveMemberIds(draft.activeMemberIds.filter(participantIdLooksValid));
       } else {
-        setActiveMemberIds(members.map((m) => m.id).filter(Number.isFinite));
+        setActiveMemberIds(members.map((m) => m.id));
       }
     } catch {
-      setActiveMemberIds(members.map((m) => m.id).filter(Number.isFinite));
+      setActiveMemberIds(members.map((m) => m.id));
     }
-  }, [open, draftKey, isEditing]);
+  }, [open, draftKey, isEditing, members]);
 
   useEffect(() => {
     if (!open || isEditing) return;
@@ -693,7 +695,7 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     items.map((item) => ({ ...item, total_price: Number((Number(item.price) * Number(item.quantity || 1)).toFixed(2)) || 0 })),
     [items]);
   const totalAmount = useMemo(() => normalizedItems.reduce((s, i) => s + (i.total_price || 0), 0), [normalizedItems]);
-  const expenseMembers = useMemo(() => activeMemberIds.filter(Number.isFinite), [activeMemberIds]);
+  const expenseMembers = useMemo(() => activeMemberIds.filter(participantIdLooksValid), [activeMemberIds]);
 
   const equalMap = useMemo(() => {
     const map = {};
@@ -732,13 +734,19 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
   const handleUnauthorized = () => { navigate(`/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`); };
 
   const toggleMemberParticipation = (memberId) => {
-    const isActive = expenseMembers.includes(memberId);
+    const isActive = expenseSplitHasMember(expenseMembers, memberId);
     if (isActive) {
       if (expenseMembers.length <= 1) return;
-      const next = expenseMembers.filter((id) => id !== memberId);
+      const next = expenseMembers.filter((id) => String(id) !== String(memberId));
       setActiveMemberIds(next);
-      setItems((prev) => prev.map((item) => { const ns = { ...(item.assignedShares || {}) }; delete ns[memberId]; return { ...item, assignedShares: ns }; }));
-      if (paidById === memberId) setPaidById(next[0] || 0);
+      setItems((prev) => prev.map((item) => {
+        const ns = { ...(item.assignedShares || {}) };
+        Object.keys(ns).forEach((k) => {
+          if (String(k) === String(memberId)) delete ns[k];
+        });
+        return { ...item, assignedShares: ns };
+      }));
+      if (String(paidById) === String(memberId)) setPaidById(next[0] ?? 0);
       return;
     }
     const next = [...expenseMembers, memberId];
@@ -841,7 +849,7 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     setIsSaving(true); setError("");
     try {
       const payload = {
-        payer_id: paidById, group_id: group.id, name: expenseName.trim(),
+        payer_id: paidById || expenseMembers[0] || members[0]?.id || 0, group_id: group.id, name: expenseName.trim(),
         currency: (group?.currency?.split("–")[0] || "USD").trim(), share_type: shareType,
         total_amount: Number(totalAmount.toFixed(2)), expense_members: expenseMembers,
         expense_items: normalizedItems.map((item) => ({
@@ -901,8 +909,14 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
           <input value={expenseName} onChange={(e) => setExpenseName(e.target.value)} className="md:col-span-2 h-11 rounded-lg px-3 text-[#101828] border border-gray-200" placeholder="Expense title" />
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7282]">Payer</label>
-            <select value={paidById} onChange={(e) => setPaidById(Number(e.target.value))} className="h-11 w-full rounded-lg px-3 text-[#101828] border border-gray-200">
-              {members.filter((m) => expenseMembers.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            <select
+              value={String(paidById)}
+              onChange={(e) => setPaidById(coerceSplitUserId(e.target.value, members[0]?.id ?? 0))}
+              className="h-11 w-full rounded-lg px-3 text-[#101828] border border-gray-200"
+            >
+              {members.filter((m) => expenseSplitHasMember(expenseMembers, m.id)).map((m) => (
+                <option key={String(m.id)} value={String(m.id)}>{m.name}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -970,7 +984,7 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
               </div>
               {shareType === "ITEMIZED" && (
                 <div className="mt-3 space-y-2">
-                  {members.filter((m) => expenseMembers.includes(m.id)).map((m) => {
+                  {members.filter((m) => expenseSplitHasMember(expenseMembers, m.id)).map((m) => {
                     const s = Number(item.assignedShares?.[m.id]) || 0;
                     const active = s > 0;
                     const maxQty = Number(item.quantity || 0);
@@ -1024,12 +1038,12 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
               <div key={`summary-${m.id}`} className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2.5">
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => toggleMemberParticipation(m.id)}
-                    className={`h-5 w-5 rounded-full border flex items-center justify-center text-[11px] ${expenseMembers.includes(m.id) ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-gray-300 text-transparent"}`}
-                    disabled={expenseMembers.length <= 1 && expenseMembers.includes(m.id)}>✓</button>
-                  <span className={`text-sm ${expenseMembers.includes(m.id) ? "text-[#101828]" : "text-gray-400"}`}>{m.name}</span>
+                    className={`h-5 w-5 rounded-full border flex items-center justify-center text-[11px] ${expenseSplitHasMember(expenseMembers, m.id) ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-gray-300 text-transparent"}`}
+                    disabled={expenseMembers.length <= 1 && expenseSplitHasMember(expenseMembers, m.id)}>✓</button>
+                  <span className={`text-sm ${expenseSplitHasMember(expenseMembers, m.id) ? "text-[#101828]" : "text-gray-400"}`}>{m.name}</span>
                 </div>
-                <span className={`text-sm font-semibold ${expenseMembers.includes(m.id) ? "text-emerald-600" : "text-gray-400"}`}>
-                  {(expenseMembers.includes(m.id) ? activeShares[m.id] || 0 : 0).toFixed(2)}
+                <span className={`text-sm font-semibold ${expenseSplitHasMember(expenseMembers, m.id) ? "text-emerald-600" : "text-gray-400"}`}>
+                  {(expenseSplitHasMember(expenseMembers, m.id) ? activeShares[m.id] || activeShares[String(m.id)] || 0 : 0).toFixed(2)}
                 </span>
               </div>
             ))}
@@ -1625,6 +1639,7 @@ const GroupDetailPage = ({ group, groups = [], user, expenses, onExpensesChange,
         />
       </div>
       <main className="flex-1 overflow-y-auto">
+        <MobileBrandAndLogout />
         <SectionErrorBoundary onRetry={() => onBack?.()}>
           <ExpenseOverviewSection group={group} expenses={expenses} onExpensesChange={onExpensesChange} onBack={onBack} onNavChange={onNavChange} onGroupUpdated={onGroupUpdated} user={user} />
         </SectionErrorBoundary>

@@ -124,7 +124,7 @@ export const RegisterForm = ({ onClose }) => {
           <input
             type="text"
             name="firstName"
-            placeholder="e.g. Nursanat"
+            placeholder="First Name"
             value={formData.firstName}
             onChange={handleChange}
             disabled={isLoading}
@@ -140,7 +140,7 @@ export const RegisterForm = ({ onClose }) => {
           <input
             type="text"
             name="lastName"
-            placeholder="e.g. Mussa"
+            placeholder="Last Name"
             value={formData.lastName}
             onChange={handleChange}
             disabled={isLoading}

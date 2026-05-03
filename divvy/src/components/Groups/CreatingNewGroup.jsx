@@ -5,13 +5,14 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import GroupDetailPage from "./GroupDetailPage";
 import { GroupExpenseDetailsPage } from "./GroupExpenseDetailsPage";
 import { cn } from "../../utils/cn";
-import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "../ui/FormComponents";
+import { Button, Input, Card, CardContent, Avatar, AvatarFallback, Label } from "../Ui/FormComponents";
 import { CreateGroupModal } from "./CreateGroupModal";
+import { authApi } from "../../api/authApi";
 import { groupApi } from "../../api/groupApi";
 import { userApi } from "../../api/userApi";
 import { useAuth } from "../../hooks/useAuth";
 import { normalizeGroupExpense } from "../../utils/groupExpenseMapper";
-import { VirtualCardPage } from "../virtualCard/VirtualCardPage";
+import { VirtualCardPage } from "../VirtualCard/VirtualCardPage";
 
 const Separator = React.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
@@ -41,47 +42,78 @@ function pathForSidebarNav(pageId) {
   return PATH_BY_NAV_ID[pageId] ?? "/dashboard";
 }
 
-export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => (
-  <aside className="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 h-full">
-    <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-      <span className="font-bold text-[#101828] text-xl tracking-wide">Divvy</span>
-    </div>
-    <nav className="flex flex-col gap-1 px-3 py-4 flex-1">
-      {[
-        { id: "dashboard", label: "Dashboard", icon: "⊞" },
-        { id: "groups", label: "Groups", icon: "◎" },
-        { id: "virtual-card", label: "Virtual Card", icon: "💳" },
-        { id: "settings", label: "Settings", icon: "⚙" },
-      ].map((item) => (
+export const Sidebar = ({ activeNav, onNavChange, groupCount = 0, user }) => {
+  const navigate = useNavigate();
+  const { logout: clearAuthSession } = useAuth();
+
+  const handleLogout = () => {
+    authApi.logout();
+    clearAuthSession();
+    navigate("/", { replace: true });
+  };
+
+  return (
+    <aside className="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 h-full">
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
         <button
-          key={item.id}
           type="button"
-          onClick={() => onNavChange(item.id)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left w-full ${
-            activeNav === item.id ? "bg-indigo-50 text-indigo-600" : "text-[#4a5565] hover:bg-gray-50 hover:text-[#101828]"
-          }`}
+          onClick={() => navigate("/")}
+          aria-label="Go to homepage"
+          className="font-bold text-[#101828] text-xl tracking-wide rounded-lg px-0 py-1 -mx-1 text-left hover:text-indigo-600 focus-visible:outline focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 transition-colors"
         >
-          <span className="text-base w-5 text-center">{item.icon}</span>
-          <span className="flex-1">{item.label}</span>
-          {item.id === "groups" && groupCount > 0 && (
-            <span className="ml-auto text-xs font-semibold bg-indigo-100 text-indigo-600 rounded-full px-2 py-0.5 leading-none">
-              {groupCount}
-            </span>
-          )}
+          Divvy
         </button>
-      ))}
-    </nav>
-    <div className="px-4 py-4 border-t border-gray-100 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-[linear-gradient(135deg,rgba(79,70,229,1)_0%,rgba(16,185,129,1)_100%)] flex items-center justify-center text-white text-sm font-bold shrink-0">
-        {user?.initials || "N"}
       </div>
-      <div className="flex flex-col min-w-0">
-        <span className="text-sm font-semibold text-[#101828] truncate">{user?.name}</span>
-        <span className="text-xs text-[#99a1af] truncate">{user?.email}</span>
+      <nav className="flex flex-col gap-1 px-3 py-4 flex-1">
+        {[
+          { id: "dashboard", label: "Dashboard", icon: "⊞" },
+          { id: "groups", label: "Groups", icon: "◎" },
+          { id: "virtual-card", label: "Virtual Card", icon: "💳" },
+          { id: "settings", label: "Settings", icon: "⚙" },
+        ].map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onNavChange(item.id)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left w-full ${
+              activeNav === item.id ? "bg-indigo-50 text-indigo-600" : "text-[#4a5565] hover:bg-gray-50 hover:text-[#101828]"
+            }`}
+          >
+            <span className="text-base w-5 text-center">{item.icon}</span>
+            <span className="flex-1">{item.label}</span>
+            {item.id === "groups" && groupCount > 0 && (
+              <span className="ml-auto text-xs font-semibold bg-indigo-100 text-indigo-600 rounded-full px-2 py-0.5 leading-none">
+                {groupCount}
+              </span>
+            )}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left w-full text-[#4a5565] hover:bg-red-50 hover:text-red-600 mt-auto"
+          aria-label="Log out"
+        >
+          <span className="w-5 h-5 shrink-0 flex items-center justify-center text-red-600" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 12h-9m0 0 3-3m-3 3 3 3" />
+            </svg>
+          </span>
+          <span>Log out</span>
+        </button>
+      </nav>
+      <div className="px-4 py-4 border-t border-gray-100 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-[linear-gradient(135deg,rgba(79,70,229,1)_0%,rgba(16,185,129,1)_100%)] flex items-center justify-center text-white text-sm font-bold shrink-0">
+          {user?.initials || "N"}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-semibold text-[#101828] truncate">{user?.name}</span>
+          <span className="text-xs text-[#99a1af] truncate">{user?.email}</span>
+        </div>
       </div>
-    </div>
-  </aside>
-);
+    </aside>
+  );
+};
 
 const Section = ({ title, description, children }) => (
   <Card className="bg-white rounded-[14px] border border-gray-100 shadow-[0px_1px_2px_-1px_#0000001a,0px_1px_3px_#0000001a] w-full">
@@ -437,6 +469,16 @@ export const CreateGroup = () => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [analyticsFilter, setAnalyticsFilter] = useState("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const handleDrawerLogout = useCallback(() => {
+    authApi.logout();
+    logout();
+    navigate("/", { replace: true });
+    setMobileNavOpen(false);
+  }, [logout, navigate]);
 
   const [user, setUser] = useState({
     id: authUser?.sub,
@@ -529,7 +571,15 @@ export const CreateGroup = () => {
               title: group.name,
               currency: group.currency,
               participants: [user.name],
-              members: [{ id: "me", first_name: user.name, last_name: "", email: user.email || "", fullName: user.name }],
+              members: [
+                {
+                  id: user.id ?? authUser?.sub,
+                  first_name: user.name?.split?.(" ")?.[0] || user.first_name || "",
+                  last_name: user.last_name || user.name?.split?.(" ")?.slice(1)?.join(" ") || "",
+                  email: user.email || "",
+                  fullName: user.name,
+                },
+              ],
               invitation_link: group.invitation_link,
             };
           }
@@ -550,7 +600,15 @@ export const CreateGroup = () => {
       title: newGroup.name,
       currency: newGroup.currency,
       participants: [user.name],
-      members: [{ id: "me", first_name: user.name, last_name: "", email: user.email || "", fullName: user.name }],
+      members: [
+        {
+          id: user.id ?? authUser?.sub,
+          first_name: user.name?.split?.(" ")?.[0] || user.first_name || "",
+          last_name: user.last_name || user.name?.split?.(" ")?.slice(1)?.join(" ") || "",
+          email: user.email || "",
+          fullName: user.name,
+        },
+      ],
       invitation_link: newGroup.invitation_link,
     };
     setGroups((g) => [mappedGroup, ...g]);
@@ -564,7 +622,17 @@ export const CreateGroup = () => {
       name: updatedGroup.name,
       currency: updatedGroup.currency,
       participants: selectedGroup?.participants || [user.name],
-      members: selectedGroup?.members || [{ id: "me", first_name: user.name, last_name: "", email: user.email || "", fullName: user.name }],
+      members:
+        selectedGroup?.members ||
+        [
+          {
+            id: user.id ?? authUser?.sub,
+            first_name: user.name?.split?.(" ")?.[0] || user.first_name || "",
+            last_name: user.last_name || user.name?.split?.(" ")?.slice(1)?.join(" ") || "",
+            email: user.email || "",
+            fullName: user.name,
+          },
+        ],
       invitation_link: updatedGroup.invitation_link,
     };
 
@@ -657,10 +725,18 @@ export const CreateGroup = () => {
     );
   }
 
-  const allExpensesList = Object.entries(allExpenses).flatMap(([gid, exps]) => {
-    const group = groups.find((g) => g.id === Number(gid));
-    return exps.map((e) => ({ ...e, group }));
-  });
+  const allExpensesList = Object.entries(allExpenses)
+    .flatMap(([gid, exps]) => {
+      const group = groups.find((g) => g.id === Number(gid));
+      return exps.map((e) => ({ ...e, group }));
+    })
+    .sort((a, b) => {
+      const getTime = (e) => {
+        const raw = e.rawDate || e.created_at || e.date;
+        return raw ? new Date(raw).getTime() : 0;
+      };
+      return getTime(b) - getTime(a);
+    });
 
   const totalSplits = allExpensesList.reduce((s, e) => s + e.amount, 0);
 
@@ -681,6 +757,56 @@ export const CreateGroup = () => {
   }, 0);
 
   const currencySymbol = "$";
+
+  const parseLocalDate = (str) => {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const dateOnly = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  const filterExpenseByDate = (expense) => {
+    if (analyticsFilter === "all") return true;
+    const rawDate = expense.rawDate || expense.created_at || expense.date;
+    if (!rawDate) return true;
+    const d = new Date(rawDate);
+    if (isNaN(d.getTime())) return true;
+    const dDay = dateOnly(d);
+    const now = new Date();
+    if (analyticsFilter === "week") {
+      const from = new Date(now);
+      from.setDate(now.getDate() - 7);
+      return dDay >= dateOnly(from);
+    }
+    if (analyticsFilter === "month") {
+      const from = new Date(now);
+      from.setMonth(now.getMonth() - 1);
+      return dDay >= dateOnly(from);
+    }
+    if (analyticsFilter === "custom") {
+      if (customFrom && dDay < parseLocalDate(customFrom)) return false;
+      if (customTo && dDay > parseLocalDate(customTo)) return false;
+      return true;
+    }
+    return true;
+  };
+
+  const filteredForAnalytics = allExpensesList.filter(filterExpenseByDate);
+
+  const filteredTotalSplits = filteredForAnalytics.reduce((s, e) => s + e.amount, 0);
+  const filteredYouOwe = filteredForAnalytics.reduce((s, e) => {
+    if (!e.group) return s;
+    const mCount = e.group.participants.length;
+    const share = e.amount / mCount;
+    if (e.paidBy !== user.name) return s + share;
+    return s;
+  }, 0);
+  const filteredOwedToYou = filteredForAnalytics.reduce((s, e) => {
+    if (!e.group) return s;
+    const mCount = e.group.participants.length;
+    const share = e.amount / mCount;
+    if (e.paidBy === user.name) return s + (e.amount - share);
+    return s;
+  }, 0);
 
   if (activePage === "virtual-card") {
     return (
@@ -717,19 +843,29 @@ export const CreateGroup = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileNavOpen(false)}
           />
-          <aside className="relative z-10 h-full w-[280px] max-w-[85vw] bg-white border-r border-gray-100 flex flex-col">
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-              <span className="font-bold text-[#101828] text-lg">Divvy</span>
+          <aside className="relative z-10 flex h-full w-[280px] max-w-[85vw] flex-col border-r border-gray-100 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg hover:bg-gray-100 text-[#6a7282]"
+                onClick={() => {
+                  navigate("/");
+                  setMobileNavOpen(false);
+                }}
+                aria-label="Go to homepage"
+                className="-mx-1 rounded-lg px-1 py-1 text-left text-lg font-bold tracking-wide text-[#101828] transition-colors hover:text-indigo-600 focus-visible:outline focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                Divvy
+              </button>
+              <button
+                type="button"
+                className="h-8 w-8 rounded-lg text-[#6a7282] hover:bg-gray-100"
                 onClick={() => setMobileNavOpen(false)}
                 aria-label="Close navigation menu"
               >
                 ✕
               </button>
             </div>
-            <nav className="flex flex-col gap-1 px-3 py-4">
+            <nav className="flex min-h-0 flex-1 flex-col gap-1 px-3 py-4">
               {[
                 { id: "dashboard", label: "Dashboard" },
                 { id: "groups", label: "Groups" },
@@ -750,16 +886,33 @@ export const CreateGroup = () => {
                 >
                   <span>{item.label}</span>
                   {item.id === "groups" && groups.length > 0 && (
-                    <span className="text-xs font-semibold bg-indigo-100 text-indigo-600 rounded-full px-2 py-0.5 leading-none">
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold leading-none text-indigo-600">
                       {groups.length}
                     </span>
                   )}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={handleDrawerLogout}
+                className="mt-auto flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[#4a5565] transition-colors hover:bg-red-50 hover:text-red-600"
+                aria-label="Log out"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center text-red-600" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 12h-9m0 0 3-3m-3 3 3 3"
+                    />
+                  </svg>
+                </span>
+                <span>Log out</span>
+              </button>
             </nav>
-            <div className="mt-auto px-4 py-4 border-t border-gray-100">
-              <p className="text-sm font-semibold text-[#101828] truncate">{user?.name}</p>
-              <p className="text-xs text-[#99a1af] truncate">{user?.email}</p>
+            <div className="border-t border-gray-100 px-4 py-4">
+              <p className="truncate text-sm font-semibold text-[#101828]">{user?.name}</p>
+              <p className="truncate text-xs text-[#99a1af]">{user?.email}</p>
             </div>
           </aside>
         </div>
@@ -809,24 +962,91 @@ export const CreateGroup = () => {
 
             {activePage === "dashboard" && (
               <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8">
+
+                {/* ── Analytics filter bar ── */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: "all", label: "All Time" },
+                      { key: "week", label: "Past Week" },
+                      { key: "month", label: "Past Month" },
+                      { key: "custom", label: "Custom Range" },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setAnalyticsFilter(key)}
+                        className={`h-8 px-4 rounded-full text-xs font-semibold transition-colors border ${
+                          analyticsFilter === key
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white text-[#4a5565] border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {analyticsFilter === "custom" && (
+                    <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wide text-[#99a1af]">From</label>
+                        <input
+                          type="date"
+                          value={customFrom}
+                          max={customTo || undefined}
+                          onChange={(e) => setCustomFrom(e.target.value)}
+                          className="h-9 px-3 rounded-xl border border-gray-200 text-sm text-[#101828] bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 focus:border-indigo-400 cursor-pointer"
+                        />
+                      </div>
+                      <span className="text-[#99a1af] text-sm mt-4">→</span>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wide text-[#99a1af]">To</label>
+                        <input
+                          type="date"
+                          value={customTo}
+                          min={customFrom || undefined}
+                          onChange={(e) => setCustomTo(e.target.value)}
+                          className="h-9 px-3 rounded-xl border border-gray-200 text-sm text-[#101828] bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 focus:border-indigo-400 cursor-pointer"
+                        />
+                      </div>
+                      {(customFrom || customTo) && (
+                        <button
+                          type="button"
+                          onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+                          className="mt-4 h-9 px-3 rounded-xl text-xs font-medium text-[#99a1af] hover:text-rose-500 hover:bg-rose-50 transition-colors border border-gray-200"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      {customFrom && customTo && (
+                        <span className="mt-4 text-xs text-[#99a1af]">
+                          {filteredForAnalytics.length} expense{filteredForAnalytics.length !== 1 ? "s" : ""} in range
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Stats cards ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {[
                     {
                       label: "Total Splits",
-                      value: `${currencySymbol}${totalSplits.toFixed(2)}`,
-                      sub: allExpensesList.length > 0 ? `${allExpensesList.length} expense${allExpensesList.length !== 1 ? "s" : ""}` : "No activity yet",
+                      value: `${currencySymbol}${filteredTotalSplits.toFixed(2)}`,
+                      sub: filteredForAnalytics.length > 0 ? `${filteredForAnalytics.length} expense${filteredForAnalytics.length !== 1 ? "s" : ""}` : "No activity yet",
                       color: "text-indigo-600",
                     },
                     {
                       label: "You Owe",
-                      value: `${currencySymbol}${youOwe.toFixed(2)}`,
-                      sub: youOwe === 0 ? "All clear" : "Across all groups",
+                      value: `${currencySymbol}${filteredYouOwe.toFixed(2)}`,
+                      sub: filteredYouOwe === 0 ? "All clear" : "Across all groups",
                       color: "text-rose-500",
                     },
                     {
                       label: "Owed to You",
-                      value: `${currencySymbol}${owedToYou.toFixed(2)}`,
-                      sub: owedToYou === 0 ? "No pending" : "Across all groups",
+                      value: `${currencySymbol}${filteredOwedToYou.toFixed(2)}`,
+                      sub: filteredOwedToYou === 0 ? "No pending" : "Across all groups",
                       color: "text-emerald-500",
                     },
                   ].map((s) => (
@@ -837,10 +1057,16 @@ export const CreateGroup = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* ── Recent Bills (last 10) ── */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm w-full">
                   <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="font-semibold text-[#101828] text-base">Recent Bills</h2>
-                    {allExpensesList.length > 0 && <span className="text-xs text-[#99a1af]">{allExpensesList.length} total</span>}
+                    {allExpensesList.length > 0 && (
+                      <span className="text-xs text-[#99a1af]">
+                        {Math.min(allExpensesList.length, 10)} of {allExpensesList.length} total
+                      </span>
+                    )}
                   </div>
                   {allExpensesList.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
