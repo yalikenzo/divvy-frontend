@@ -502,6 +502,7 @@ export const CreateGroup = () => {
   // Currency conversion state for analytics
   const [usdConversionRates, setUsdConversionRates] = useState({});
   const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState({ totalSplits: 0, youOwe: 0, owedToYou: 0 });
 
   const handleDrawerLogout = useCallback(() => {
     authApi.logout();
@@ -861,9 +862,6 @@ export const CreateGroup = () => {
     }
     return true;
   };
-
-  const [analyticsData, setAnalyticsData] = useState({ totalSplits: 0, youOwe: 0, owedToYou: 0 });
-  
   useEffect(() => {
     const updateAnalytics = async () => {
       const { totalSplitsUSD, youOweUSD, owedToYouUSD } = await calculateAnalyticsInUSD(
