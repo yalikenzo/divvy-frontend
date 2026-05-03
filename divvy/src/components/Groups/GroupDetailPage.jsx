@@ -625,7 +625,20 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
   const populatedRef = useRef(false);
 
   useEffect(() => {
-    if (!open) { populatedRef.current = false; return; }
+    if (!open) {
+      populatedRef.current = false;
+      setExpenseName("Expense");
+      setPaidById(members[0]?.id ?? 0);
+      setShareType("EQUAL");
+      setItems([]);
+      setScanFiles([]);
+      setScannedFileSignatures([]);
+      setError("");
+      setDraftItemName("");
+      setDraftItemPrice("");
+      setDraftItemQty("1");
+      return;
+    }
     if (populatedRef.current) return;
     if (!isEditing || !existingExpense) { populatedRef.current = true; return; }
     populatedRef.current = true;
