@@ -17,6 +17,7 @@ import {
   participantIdLooksValid,
 } from "../../utils/groupMembers";
 import { MediaGallery } from "../Media/MediaGallery";
+import { mediaApi } from "../../api/mediaApi";
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -758,7 +759,10 @@ const FullScreenExpenseEditor = ({ open, onClose, group, onExpenseCreated, exist
     if (!pendingScanFiles.length) return;
     setIsScanning(true); setError("");
     try {
-      const response = await groupApi.scanReceipt(group.id, pendingScanFiles);
+      const [response] = await Promise.all([
+        groupApi.scanReceipt(group.id, pendingScanFiles),
+        mediaApi.uploadReceipt(group.id, pendingScanFiles).catch(() => {}),
+      ]);
       const raw = Array.isArray(response) ? response : Array.isArray(response?.items) ? response.items : Array.isArray(response?.data) ? response.data : [];
       const scanned = raw.map((item, idx) => { const shares = {}; expenseMembers.forEach((id) => { shares[id] = 0; }); return { id: Date.now() + idx, name: item.item_name || item.name || `Item ${idx + 1}`, price: Number(item.price || 0), quantity: Number(item.quantity || 1), assignedShares: shares }; });
       setItems((prev) => [...prev, ...scanned]);
